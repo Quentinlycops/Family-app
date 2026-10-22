@@ -7,6 +7,7 @@ import Login from "./Login";
 import FamilySetup from "./FamilySetup";
 
 const TABS = [
+  { href: "/accueil", label: "Accueil", icon: "🏠" },
   { href: "/agenda", label: "Agenda", icon: "📅" },
   { href: "/todo", label: "To-do", icon: "✅" },
   { href: "/courses", label: "Courses", icon: "🛒" },
@@ -26,7 +27,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="mx-auto flex min-h-screen max-w-3xl flex-col">
       <header className="sticky top-0 z-10 flex items-center justify-between border-b border-stone-200 bg-stone-50/90 px-4 py-3 backdrop-blur">
-        <Link href="/agenda" className="text-lg font-semibold text-teal-800">
+        <Link href="/accueil" className="text-lg font-semibold text-teal-800">
           🏡 {family.name}
         </Link>
         <Link
@@ -47,15 +48,15 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </Link>
       </header>
       <main className="flex-1 px-4 pb-28 pt-4">{children}</main>
-      <nav className="fixed inset-x-0 bottom-0 z-10 border-t border-stone-200 bg-white pb-[env(safe-area-inset-bottom)]">
-        <div className="mx-auto grid max-w-3xl grid-cols-5">
+      <nav className="fixed inset-x-0 bottom-0 z-10 border-t border-stone-200 bg-surface pb-[env(safe-area-inset-bottom)]">
+        <div className="mx-auto grid max-w-3xl grid-cols-6">
           {TABS.map((t) => {
             const active = path.startsWith(t.href);
             return (
               <Link
                 key={t.href}
                 href={t.href}
-                className={`flex flex-col items-center py-2 text-xs ${active ? "font-semibold text-teal-700" : "text-stone-500"}`}
+                className={`flex flex-col items-center py-2 text-[11px] ${active ? "font-semibold text-teal-700" : "text-stone-500"}`}
               >
                 <span className="text-xl">{t.icon}</span>
                 {t.label}

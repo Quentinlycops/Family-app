@@ -1,10 +1,10 @@
 "use client";
 import { useMemo, useState } from "react";
 import { useFamily } from "@/lib/family";
-import { useCollection } from "@/lib/useCollection";
+import { useEvents } from "@/lib/useEvents";
 import type { CalendarEvent } from "@/lib/types";
 import {
-  addDays, birthdayEvents, eventsOn, fmtLong, fmtMonth, fmtShort, fromISO,
+  addDays, eventsOn, fmtLong, fmtMonth, fmtShort, fromISO,
   startOfWeek, toISO, today, WEEKDAYS,
 } from "@/lib/dates";
 import EventForm from "@/components/EventForm";
@@ -13,18 +13,17 @@ type View = "mois" | "semaine";
 
 export default function AgendaPage() {
   const { family, member } = useFamily();
-  const { items } = useCollection<CalendarEvent>("events");
+  const { events: all, errors } = useEvents();
   const [view, setView] = useState<View>("mois");
   const [selected, setSelected] = useState(today());
   const [filter, setFilter] = useState<string[]>([]);
   const [editing, setEditing] = useState<CalendarEvent | "new" | null>(null);
 
   const events = useMemo(() => {
-    const all = [...items, ...birthdayEvents(family?.members ?? [])];
     return filter.length
       ? all.filter((e) => e.memberIds.some((id) => filter.includes(id)))
       : all;
-  }, [items, family, filter]);
+  }, [all, filter]);
 
   const sel = fromISO(selected);
   const move = (dir: number) =>
@@ -47,7 +46,7 @@ export default function AgendaPage() {
 
   const EventRow = ({ ev }: { ev: CalendarEvent }) => (
     <button
-      onClick={() => !ev.birthday && setEditing(ev)}
+      onClick={() => !ev.birthday && !ev.source && setEditing(ev)}
       className="flex w-full items-start gap-3 rounded-xl p-2 text-left hover:bg-stone-50"
     >
       <span className="flex w-14 shrink-0 flex-col pt-0.5 text-xs text-stone-500">
@@ -69,6 +68,7 @@ export default function AgendaPage() {
           {ev.memberIds.map((id) => member(id)?.name).join(", ")}
           {ev.location && ` · ${ev.location}`}
           {ev.recurrence !== "none" && !ev.birthday && " · 🔁"}
+          {ev.source && ` · ${ev.source}`}
         </span>
       </span>
     </button>
@@ -89,12 +89,14 @@ export default function AgendaPage() {
         <div className="flex rounded-xl bg-stone-200/70 p-1 text-sm">
           {(["mois", "semaine"] as const).map((v) => (
             <button key={v} onClick={() => setView(v)}
-              className={`rounded-lg px-3 py-1 capitalize ${view === v ? "bg-white shadow" : "text-stone-600"}`}>
+              className={`rounded-lg px-3 py-1 capitalize ${view === v ? "bg-surface shadow" : "text-stone-600"}`}>
               {v}
             </button>
           ))}
         </div>
       </div>
+
+      {errors.map((e) => <p key={e} className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">⚠️ {e}</p>)}
 
       <div className="flex flex-wrap items-center gap-2">
         {family?.members.map((m) => {
@@ -103,7 +105,7 @@ export default function AgendaPage() {
             <button key={m.id}
               onClick={() => setFilter(on ? filter.filter((f) => f !== m.id) : [...filter, m.id])}
               className="rounded-full border-2 px-3 py-0.5 text-sm font-medium"
-              style={{ borderColor: m.color, background: on ? m.color : "white", color: on ? "white" : m.color }}>
+              style={{ borderColor: m.color, background: on ? m.color : "transparent", color: on ? "white" : m.color }}>
               {m.name}
             </button>
           );
@@ -126,7 +128,7 @@ export default function AgendaPage() {
               return (
                 <button key={iso} onClick={() => setSelected(iso)}
                   className={`flex h-14 flex-col items-center rounded-xl pt-1 text-sm ${
-                    iso === selected ? "bg-teal-700 text-white" : out ? "text-stone-300" : "hover:bg-stone-100"
+                    iso === selected ? "bg-brand text-white" : out ? "text-stone-300" : "hover:bg-stone-100"
                   }`}>
                   <span className={iso === today() && iso !== selected ? "font-bold text-teal-700" : ""}>
                     {d.getDate()}
@@ -171,7 +173,7 @@ export default function AgendaPage() {
       )}
 
       <button onClick={() => setEditing("new")}
-        className="fixed bottom-24 right-5 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-teal-700 text-3xl text-white shadow-lg hover:bg-teal-800"
+        className="fixed bottom-24 right-5 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-brand text-3xl text-white shadow-lg hover:bg-brand-dark"
         aria-label="Ajouter un événement">+</button>
 
       {editing && (

@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Famille",
     short_name: "Famille",
     description: "Agenda, courses, repas, to-do et budget de la famille",
-    start_url: "/agenda",
+    start_url: "/accueil",
     display: "standalone",
     background_color: "#fafaf9",
     theme_color: "#0f766e",

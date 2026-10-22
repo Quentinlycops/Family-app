@@ -36,7 +36,7 @@ export default function FamilySetup() {
         <div className="grid grid-cols-2 gap-2 rounded-xl bg-stone-100 p-1">
           {(["create", "join"] as const).map((m) => (
             <button key={m} type="button" onClick={() => setMode(m)}
-              className={`rounded-lg py-2 text-sm font-medium ${mode === m ? "bg-white shadow" : "text-stone-500"}`}>
+              className={`rounded-lg py-2 text-sm font-medium ${mode === m ? "bg-surface shadow" : "text-stone-500"}`}>
               {m === "create" ? "Créer la famille" : "Rejoindre"}
             </button>
           ))}

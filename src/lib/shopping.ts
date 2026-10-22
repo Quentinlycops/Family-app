@@ -1,3 +1,4 @@
+import { normalize } from "./search";
 import { addDoc } from "firebase/firestore";
 import { familyCol } from "./useCollection";
 
@@ -33,11 +34,13 @@ export function guessAisle(name: string) {
   return "Autre";
 }
 
-export async function addShoppingItems(fid: string, names: string[]) {
+/** Ajoute les articles, sans doublon avec ceux déjà dans la liste (`existing`). */
+export async function addShoppingItems(fid: string, names: string[], existing: string[] = []) {
+  const seen = new Set(existing.map(normalize));
   await Promise.all(
     names
       .map((n) => n.trim())
-      .filter(Boolean)
+      .filter((n) => n && !seen.has(normalize(n)) && seen.add(normalize(n)))
       .map((name) =>
         addDoc(familyCol(fid, "shopping"), {
           name,

@@ -82,3 +82,40 @@ export function eventsOn(events: CalendarEvent[], day: string) {
     .filter((e) => occursOn(e, day))
     .sort((x, y) => (x.startTime ?? "").localeCompare(y.startTime ?? ""));
 }
+
+/** Occurrences des événements sur `days` jours à partir de `from`. */
+export function upcoming(events: CalendarEvent[], from: string, days: number) {
+  const start = fromISO(from);
+  return Array.from({ length: days }, (_, i) => toISO(addDays(start, i))).flatMap(
+    (date) => eventsOn(events, date).map((ev) => ({ date, ev })),
+  );
+}
+
+/** Prochain anniversaire d'un membre : date, âge atteint et nombre de jours restants. */
+export function nextBirthday(birthDate: string, from = new Date()) {
+  const b = fromISO(birthDate);
+  const base = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+  let next = new Date(base.getFullYear(), b.getMonth(), b.getDate());
+  if (next < base) next = new Date(base.getFullYear() + 1, b.getMonth(), b.getDate());
+  const days = Math.round((next.getTime() - base.getTime()) / 86400000);
+  return { date: toISO(next), age: next.getFullYear() - b.getFullYear(), days };
+}
+
+export function relativeDay(date: string, from = today()) {
+  const diff = Math.round((fromISO(date).getTime() - fromISO(from).getTime()) / 86400000);
+  if (diff === 0) return "Aujourd'hui";
+  if (diff === 1) return "Demain";
+  if (diff === -1) return "Hier";
+  if (diff > 1 && diff < 7) return fmtLong(date).split(" ")[0];
+  return fmtShort(date);
+}
+
+export function daysAgo(date: string, from = today()) {
+  const diff = Math.round((fromISO(from).getTime() - fromISO(date).getTime()) / 86400000);
+  if (diff === 0) return "aujourd'hui";
+  if (diff === 1) return "hier";
+  if (diff < 0) return `dans ${-diff} j`;
+  if (diff < 31) return `il y a ${diff} j`;
+  const months = Math.round(diff / 30);
+  return months < 12 ? `il y a ${months} mois` : `il y a ${Math.round(diff / 365)} an(s)`;
+}

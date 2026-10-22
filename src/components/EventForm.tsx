@@ -7,6 +7,7 @@ import { useFamily } from "@/lib/family";
 import type { CalendarEvent, Recurrence } from "@/lib/types";
 import Modal from "./Modal";
 import MemberPicker from "./MemberPicker";
+import { googleTemplateUrl } from "@/lib/ical-export";
 
 const RECURRENCES: { value: Recurrence; label: string }[] = [
   { value: "none", label: "Une seule fois" },
@@ -25,7 +26,7 @@ export default function EventForm({
   date: string;
   onClose: () => void;
 }) {
-  const { family, me } = useFamily();
+  const { family, me, member } = useFamily();
   const [form, setForm] = useState<Omit<CalendarEvent, "id">>(
     event ?? {
       title: "",
@@ -114,6 +115,12 @@ export default function EventForm({
           onChange={(e) => set({ location: e.target.value })} />
         <textarea className="input" rows={2} placeholder="Notes" value={form.notes ?? ""}
           onChange={(e) => set({ notes: e.target.value })} />
+        {event && (
+          <a className="btn-ghost w-full border border-stone-200 text-sm" target="_blank" rel="noreferrer"
+            href={googleTemplateUrl(event, event.memberIds.map((id) => member(id)?.name).join(", "))}>
+            📆 Ajouter à Google Agenda
+          </a>
+        )}
         <div className="flex justify-between">
           {event ? (
             <button type="button" className="btn-ghost text-red-600" onClick={remove}>Supprimer</button>

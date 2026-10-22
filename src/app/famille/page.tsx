@@ -5,10 +5,13 @@ import { auth } from "@/lib/firebase";
 import { saveMembers, useFamily } from "@/lib/family";
 import { ageLabel, fmtLong } from "@/lib/dates";
 import type { Member } from "@/lib/types";
+import GoogleCalendarSettings from "@/components/GoogleCalendarSettings";
+import Link from "next/link";
 
 export default function FamillePage() {
   const { family, user, me } = useFamily();
   const [members, setMembers] = useState<Member[]>(family?.members ?? []);
+  const [name, setName] = useState(family?.name ?? "");
   const [copied, setCopied] = useState(false);
   const [saved, setSaved] = useState(false);
   if (!family) return null;
@@ -17,7 +20,7 @@ export default function FamillePage() {
     setMembers(members.map((m) => (m.id === id ? { ...m, ...patch } : m)));
 
   async function save() {
-    await saveMembers(family!.id, members);
+    await saveMembers(family!.id, members, name.trim() || family!.name);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }
@@ -47,6 +50,10 @@ export default function FamillePage() {
       )}
 
       <section className="card space-y-4">
+        <label className="block">
+          <span className="label">Nom de la famille (affiché en haut)</span>
+          <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="ex. Famille Lycops" />
+        </label>
         {members.map((m) => (
           <div key={m.id} className="flex items-center gap-3">
             <input type="color" value={m.color} onChange={(e) => update(m.id, { color: e.target.value })}
@@ -68,6 +75,12 @@ export default function FamillePage() {
           <button className="btn" onClick={save}>{saved ? "Enregistré ✓" : "Enregistrer"}</button>
         </div>
       </section>
+
+      <Link href="/enfants" className="card block font-medium text-teal-700">
+        👧 Fiches des enfants : santé, vaccins, tailles, contacts ›
+      </Link>
+
+      <GoogleCalendarSettings />
 
       <section className="card flex items-center justify-between">
         <p className="text-sm text-stone-600">

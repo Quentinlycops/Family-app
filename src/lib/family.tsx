@@ -113,6 +113,6 @@ export async function joinFamily(uid: string, code: string, memberId: string) {
   await setDoc(doc(db, "users", uid), { familyId: ref.id });
 }
 
-export async function saveMembers(fid: string, members: Member[]) {
-  await updateDoc(doc(db, "families", fid), { members });
+export async function saveMembers(fid: string, members: Member[], name: string) {
+  await updateDoc(doc(db, "families", fid), { members, name });
 }

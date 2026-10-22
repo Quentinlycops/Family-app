@@ -28,6 +28,7 @@ export type CalendarEvent = {
   location?: string;
   notes?: string;
   birthday?: boolean; // généré automatiquement, non stocké
+  source?: string; // nom de l'agenda Google d'origine, lecture seule
 };
 
 export type Todo = {
@@ -62,6 +63,7 @@ export type MealSlot = {
   slot: "midi" | "soir";
   recipeId?: string;
   text?: string;
+  note?: string; // souvenir libre : « chez mamie », « les filles ont adoré »…
 };
 
 export type Expense = {
@@ -75,4 +77,24 @@ export type Expense = {
 
 export type BudgetSettings = {
   categories: { name: string; monthly: number }[];
+};
+
+export type KidProfile = {
+  sizes?: { clothes?: string; shoes?: string; diapers?: string; updated?: string };
+  growth?: { date: string; weight?: number; height?: number }[];
+  health?: { doctor?: string; allergies?: string; bloodType?: string; notes?: string };
+  vaccines?: { name: string; date?: string; nextDue?: string }[];
+  contacts?: { name: string; role: string; phone?: string }[];
+};
+
+export type CalendarFeed = {
+  id: string;
+  name: string;
+  url: string; // adresse secrète iCal
+  memberIds: string[];
+};
+
+export type CalendarSettings = {
+  feeds?: CalendarFeed[];
+  exportToken?: string; // jeton de l'agenda familial publié pour Google Agenda
 };

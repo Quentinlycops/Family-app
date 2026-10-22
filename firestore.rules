@@ -11,6 +11,15 @@ service cloud.firestore {
       allow read, write: if signedIn() && request.auth.uid == uid;
     }
 
+    // Copie de l'agenda familial publiée pour l'abonnement Google Agenda.
+    // Le jeton (identifiant du document) est long et aléatoire : il fait office de mot de passe.
+    match /feeds/{token} {
+      allow get: if true;
+      allow create: if inFamily(request.resource.data.fid);
+      allow update: if inFamily(resource.data.fid) && request.resource.data.fid == resource.data.fid;
+      allow delete: if inFamily(resource.data.fid);
+    }
+
     match /families/{fid} {
       // Le code de famille est l'identifiant du document : il faut le connaître pour la lire.
       allow get: if signedIn();
