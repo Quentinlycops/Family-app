@@ -29,3 +29,9 @@ Après une modification, les coller dans Console Firebase > Firestore > Règles 
 - `users/{uid}` : famille du compte
 - `families/{id}` : nom, membres (Cristina, Quentin, Léa, Alba), comptes liés. L'identifiant sert de code d'invitation.
 - `families/{id}/events | todos | shopping | recipes | meals | expenses | settings`
+
+## Mise en ligne
+
+Vercel déploie automatiquement chaque push sur `main`. Les variables `NEXT_PUBLIC_FIREBASE_*`
+sont définies dans Vercel > family-app > Settings > Environment Variables ; elles sont lues au moment
+du build, donc il faut redéployer après les avoir modifiées.
