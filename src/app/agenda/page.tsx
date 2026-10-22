@@ -90,7 +90,7 @@ export default function AgendaPage() {
       className="flex w-full items-stretch gap-3 rounded-xl p-2 text-left hover:bg-stone-100">
       <span className="w-1 shrink-0 rounded-full" style={{ background: stripe(ev) }} />
       <span className="flex w-12 shrink-0 flex-col text-xs text-stone-500">
-        {ev.startTime ? <><b className="text-sm text-stone-800">{ev.startTime}</b>{ev.endTime}</> : "Journée"}
+        {ev.startTime ? <><b className="text-sm text-stone-800">{ev.startTime}</b>{ev.endTime}</> : ev.endTime ? <>jusqu&apos;à<b className="text-sm text-stone-800">{ev.endTime}</b></> : "Journée"}
       </span>
       <span className="min-w-0 flex-1">
         <span className="block font-medium">{ev.title}</span>
@@ -207,7 +207,7 @@ export default function AgendaPage() {
                       style={{ background: tint(color(ev), 0.14) }}>
                       <span className="absolute inset-y-0 left-0 w-1 rounded-l-lg" style={{ background: stripe(ev) }} />
                       <span className="block text-xs font-semibold text-stone-600">
-                        {ev.startTime ? `${ev.startTime}${ev.endTime ? ` – ${ev.endTime}` : ""}` : "Journée"}
+                        {ev.startTime ? `${ev.startTime}${ev.endTime ? ` – ${ev.endTime}` : ""}` : ev.endTime ? `jusqu'à ${ev.endTime}` : "Journée"}
                       </span>
                       <span className="block text-sm font-medium leading-snug text-stone-900">{ev.title}</span>
                       <span className="block truncate text-xs text-stone-500">

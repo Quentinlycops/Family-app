@@ -48,7 +48,17 @@ export default function AccueilPage() {
 
   if (!family) return null;
   const now = today();
-  const next = upcoming(events.filter((e) => !e.birthday), now, 14).slice(0, 8);
+  // Un événement sur plusieurs jours n'est montré qu'une fois (son premier jour visible).
+  const seen = new Set<string>();
+  const next = upcoming(events.filter((e) => !e.birthday), now, 14)
+    .filter(({ ev }) => {
+      const key = `${ev.title}|${ev.source ?? ""}|${ev.memberIds.join()}`;
+      const spans = !!ev.endDate || (ev.source && !ev.startTime);
+      if (spans && seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 8);
   const byDay = next.reduce<Record<string, typeof next>>((acc, o) => {
     (acc[o.date] ??= []).push(o);
     return acc;
@@ -92,7 +102,7 @@ export default function AccueilPage() {
               </p>
               {list.map(({ ev }) => (
                 <div key={ev.id + date} className="flex items-center gap-3 py-1">
-                  <span className="w-12 text-sm font-semibold">{ev.startTime ?? "—"}</span>
+                  <span className="w-12 text-sm font-semibold">{ev.startTime ?? (ev.endTime ? `→${ev.endTime}` : "—")}</span>
                   <span className="flex gap-0.5">
                     {ev.memberIds.map((id) => (
                       <span key={id} className="h-2.5 w-2.5 rounded-full" style={{ background: member(id)?.color }} />

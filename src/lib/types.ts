@@ -20,6 +20,7 @@ export type CalendarEvent = {
   id: string;
   title: string;
   date: string; // AAAA-MM-JJ
+  endDate?: string; // dernier jour pour un événement « toute la journée » sur plusieurs jours
   startTime?: string; // HH:mm, absent = toute la journée
   endTime?: string;
   memberIds: string[];

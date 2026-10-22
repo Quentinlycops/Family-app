@@ -44,8 +44,11 @@ export default function EventForm({
     e.preventDefault();
     if (!family) return;
     // Firestore refuse les champs `undefined` : on les retire.
+    const clean = { ...form };
+    // Une date de fin n'a de sens que pour un événement unique sur la journée entière.
+    if (clean.startTime || clean.recurrence !== "none" || (clean.endDate ?? "") <= clean.date) delete clean.endDate;
     const data = Object.fromEntries(
-      Object.entries(form).filter(([k, v]) => v !== undefined && v !== "" && k !== "id"),
+      Object.entries(clean).filter(([k, v]) => v !== undefined && v !== "" && k !== "id"),
     );
     if (event) await setDoc(doc(db, "families", family.id, "events", event.id), data);
     else await addDoc(familyCol(family.id, "events"), data);
@@ -77,6 +80,13 @@ export default function EventForm({
             Toute la journée
           </label>
         </div>
+        {allDay && form.recurrence === "none" && (
+          <div>
+            <label className="label">Jusqu&apos;au (si plusieurs jours, ex. vacances)</label>
+            <input type="date" className="input" min={form.date} value={form.endDate ?? ""}
+              onChange={(e) => set({ endDate: e.target.value && e.target.value > form.date ? e.target.value : undefined })} />
+          </div>
+        )}
         {!allDay && (
           <div className="grid grid-cols-2 gap-3">
             <div>

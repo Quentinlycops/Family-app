@@ -61,7 +61,7 @@ export function buildIcs(name: string, events: (CalendarEvent & { who?: string }
       lines.push(`DTSTART;TZID=${TIME_ZONE}:${compact(ev.date, ev.startTime)}`);
       lines.push(`DTEND;TZID=${TIME_ZONE}:${compact(ev.date, ev.endTime && ev.endTime > ev.startTime ? ev.endTime : ev.startTime)}`);
     } else {
-      lines.push(`DTSTART;VALUE=DATE:${compact(ev.date)}`, `DTEND;VALUE=DATE:${compact(nextDay(ev.date))}`);
+      lines.push(`DTSTART;VALUE=DATE:${compact(ev.date)}`, `DTEND;VALUE=DATE:${compact(nextDay(ev.endDate ?? ev.date))}`);
     }
     const rule = rrule(ev);
     if (rule) lines.push(rule);
@@ -78,7 +78,7 @@ export function buildIcs(name: string, events: (CalendarEvent & { who?: string }
 export function googleTemplateUrl(ev: CalendarEvent, who?: string) {
   const dates = ev.startTime
     ? `${compact(ev.date, ev.startTime)}/${compact(ev.date, ev.endTime && ev.endTime > ev.startTime ? ev.endTime : ev.startTime)}`
-    : `${compact(ev.date)}/${compact(nextDay(ev.date))}`;
+    : `${compact(ev.date)}/${compact(nextDay(ev.endDate ?? ev.date))}`;
   const p = new URLSearchParams({ action: "TEMPLATE", text: ev.title, dates, ctz: TIME_ZONE });
   if (ev.location) p.set("location", ev.location);
   const details = [who && `Pour : ${who}`, ev.notes].filter(Boolean).join("\n");

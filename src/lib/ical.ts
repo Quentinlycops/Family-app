@@ -54,13 +54,20 @@ export function parseIcs(ics: string, from: Date, to: Date): Omit<CalendarEvent,
     } else {
       const s = local(it.start.toJSDate());
       const e = it.end ? local(it.end.toJSDate()) : undefined;
-      out.push({
-        ...base,
-        id: `${it.uid}_${s.date}_${s.time}`,
-        date: s.date,
-        startTime: s.time,
-        ...(e && { endTime: e.date === s.date ? e.time : "23:59" }),
-      });
+      if (!e || e.date === s.date) {
+        out.push({ ...base, id: `${it.uid}_${s.date}_${s.time}`, date: s.date, startTime: s.time, ...(e && { endTime: e.time }) });
+        continue;
+      }
+      // Sur plusieurs jours : heure de début le 1er jour, journée entière ensuite,
+      // heure de fin le dernier jour (sauf si elle tombe à minuit pile).
+      const d = new Date(`${s.date}T12:00:00Z`);
+      for (let i = 0; i < 62; i++) {
+        const iso = d.toISOString().slice(0, 10);
+        if (iso > e.date || (iso === e.date && e.time === "00:00")) break;
+        const part = iso === s.date ? { startTime: s.time } : iso === e.date ? { endTime: e.time } : {};
+        out.push({ ...base, id: `${it.uid}_${iso}`, date: iso, ...part });
+        d.setUTCDate(d.getUTCDate() + 1);
+      }
     }
   }
   return out;

@@ -54,7 +54,7 @@ export function occursOn(ev: CalendarEvent, day: string) {
   const b = fromISO(day);
   switch (ev.recurrence) {
     case "none":
-      return day === ev.date;
+      return ev.endDate ? day <= ev.endDate : day === ev.date;
     case "daily":
       return true;
     case "weekly":
