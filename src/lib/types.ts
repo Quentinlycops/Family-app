@@ -83,8 +83,11 @@ export type BudgetSettings = {
   categories: { name: string; monthly: number }[];
 };
 
+export type SizeEntry = { date: string; clothes?: string; shoes?: string; head?: string };
+
 export type KidProfile = {
-  sizes?: { clothes?: string; shoes?: string; head?: string; updated?: string };
+  sizes?: { clothes?: string; shoes?: string; head?: string; updated?: string }; // ancien format, repris dans l'historique
+  sizeHistory?: SizeEntry[];
   growth?: { date: string; weight?: number; height?: number }[];
   health?: { doctor?: string; allergies?: string; bloodType?: string; notes?: string };
   vaccines?: { name: string; date?: string; nextDue?: string }[];

@@ -4,7 +4,9 @@ import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useFamily } from "@/lib/family";
 import { ageLabel, fmtShort, today } from "@/lib/dates";
-import type { KidProfile, Member } from "@/lib/types";
+import type { KidProfile, Member, SizeEntry } from "@/lib/types";
+
+const SIZE_FIELDS = [["clothes", "Vêtements", "4 ans"], ["shoes", "Chaussures", "26"], ["head", "Tour de tête", "50 cm"]] as const;
 
 export default function EnfantsPage() {
   const { family } = useFamily();
@@ -37,10 +39,16 @@ function KidCard({ kid, fid }: { kid: Member; fid: string }) {
     return setDoc(ref, patch, { merge: true });
   };
 
+  const [size, setSize] = useState({ date: today(), clothes: "", shoes: "", head: "" });
   const [growth, setGrowth] = useState({ date: today(), weight: "", height: "" });
   const [vaccine, setVaccine] = useState({ name: "", date: today(), nextDue: "" });
   const [contact, setContact] = useState({ name: "", role: "", phone: "" });
   const num = (s: string) => (s ? Number(s.replace(",", ".")) : undefined);
+  // Historique des tailles, du plus récent au plus ancien ; l'ancienne fiche unique y est reprise.
+  const legacy = p.sizes && (p.sizes.clothes || p.sizes.shoes || p.sizes.head)
+    ? [{ date: p.sizes.updated ?? today(), ...Object.fromEntries(SIZE_FIELDS.map(([k]) => [k, p.sizes![k]]).filter(([, v]) => v)) }]
+    : [];
+  const sizeHistory: SizeEntry[] = [...(p.sizeHistory ?? legacy)].sort((a, b) => b.date.localeCompare(a.date));
   const lastGrowth = [...(p.growth ?? [])].sort((a, b) => b.date.localeCompare(a.date));
   const dueSoon = (p.vaccines ?? []).filter((v) => v.nextDue && v.nextDue >= today());
 
@@ -60,17 +68,52 @@ function KidCard({ kid, fid }: { kid: Member; fid: string }) {
 
       <div className="card">
         <h3 className="mb-2 font-semibold">👕 Tailles</h3>
-        <div className="grid grid-cols-3 gap-2">
-          {([["clothes", "Vêtements", "ex. 4 ans"], ["shoes", "Chaussures", "ex. 26"], ["head", "Tour de tête", "ex. 50 cm"]] as const).map(([k, label, ph]) => (
-            <label key={k} className="text-sm">
-              <span className="label">{label}</span>
-              <input className="input" placeholder={ph} defaultValue={p.sizes?.[k] ?? ""}
-                onBlur={(e) => e.target.value !== (p.sizes?.[k] ?? "") &&
-                  save({ sizes: { ...p.sizes, [k]: e.target.value, updated: today() } })} />
-            </label>
-          ))}
-        </div>
-        {p.sizes?.updated && <p className="mt-1 text-xs text-stone-400">Mis à jour le {fmtShort(p.sizes.updated)}</p>}
+        {sizeHistory.length > 0 && (
+          <div className="mb-3 grid grid-cols-3 gap-2 text-center">
+            {SIZE_FIELDS.map(([k, label]) => {
+              const last = sizeHistory.find((e) => e[k]);
+              return (
+                <div key={k} className="rounded-xl bg-stone-100 px-2 py-2">
+                  <p className="text-xs text-stone-500">{label}</p>
+                  <p className="font-semibold">{last?.[k] ?? "—"}</p>
+                  {last && <p className="text-[10px] text-stone-400">{fmtShort(last.date)} {last.date.slice(0, 4)}</p>}
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <form className="space-y-2" onSubmit={(e) => {
+          e.preventDefault();
+          const entry = { date: size.date, ...Object.fromEntries(SIZE_FIELDS.map(([k]) => [k, size[k].trim()]).filter(([, v]) => v)) };
+          if (Object.keys(entry).length === 1) return;
+          save({ sizeHistory: [...sizeHistory, entry] });
+          setSize({ date: size.date, clothes: "", shoes: "", head: "" });
+        }}>
+          <div className="grid grid-cols-3 gap-2">
+            {SIZE_FIELDS.map(([k, label, ph]) => (
+              <label key={k} className="text-sm">
+                <span className="label">{label}</span>
+                <input className="input" placeholder={ph} value={size[k]} onChange={(e) => setSize({ ...size, [k]: e.target.value })} />
+              </label>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input type="date" className="input flex-1" value={size.date} onChange={(e) => setSize({ ...size, date: e.target.value })} />
+            <button className="btn">Ajouter</button>
+          </div>
+        </form>
+        {sizeHistory.length > 0 && (
+          <ul className="mt-2 divide-y divide-stone-100 text-sm">
+            {sizeHistory.map((e, i) => (
+              <li key={i} className="flex items-center gap-2 py-1">
+                <span className="w-24 shrink-0 text-stone-500">{fmtShort(e.date)} {e.date.slice(0, 4)}</span>
+                <span className="flex-1">{SIZE_FIELDS.filter(([k]) => e[k]).map(([k, label]) => `${label} ${e[k]}`).join(" · ")}</span>
+                <button className="text-stone-400 hover:text-red-600" aria-label="Supprimer"
+                  onClick={() => save({ sizeHistory: sizeHistory.filter((x) => x !== e) })}>×</button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="card">
