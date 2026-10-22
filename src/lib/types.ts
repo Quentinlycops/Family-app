@@ -30,6 +30,9 @@ export type CalendarEvent = {
   notes?: string;
   birthday?: boolean; // généré automatiquement, non stocké
   source?: string; // nom de l'agenda Google d'origine, lecture seule
+  color?: string; // couleur personnalisée (dans l'app seulement)
+  uid?: string; // identifiant iCal de l'événement Google
+  feedId?: string; // agenda Google d'origine
 };
 
 export type Todo = {
@@ -93,9 +96,11 @@ export type CalendarFeed = {
   name: string;
   url: string; // adresse secrète iCal
   memberIds: string[];
+  color?: string; // couleur par défaut des événements de cet agenda (dans l'app seulement)
 };
 
 export type CalendarSettings = {
   feeds?: CalendarFeed[];
   exportToken?: string; // jeton de l'agenda familial publié pour Google Agenda
+  eventColors?: Record<string, string>; // couleur choisie pour un événement Google, clé `${feedId}:${uid}`
 };

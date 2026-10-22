@@ -6,6 +6,7 @@ import { useFamily } from "@/lib/family";
 import { useCalendarSettings, useEvents } from "@/lib/useEvents";
 import type { CalendarFeed } from "@/lib/types";
 import MemberPicker from "./MemberPicker";
+import ColorSwatches, { PALETTE } from "./ColorSwatches";
 
 export default function GoogleCalendarSettings() {
   const { family, me } = useFamily();
@@ -15,6 +16,7 @@ export default function GoogleCalendarSettings() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [picking, setPicking] = useState<string | null>(null);
   if (!family) return null;
   const ref = doc(db, "families", family.id, "settings", "calendars");
   const feeds = settings.feeds ?? [];
@@ -33,6 +35,7 @@ export default function GoogleCalendarSettings() {
         name: form.name.trim() || data.name || "Google Agenda",
         url: form.url.trim(),
         memberIds: form.memberIds,
+        color: PALETTE.find((c) => !feeds.some((f) => f.color === c)) ?? PALETTE[0],
       };
       await setDoc(ref, { feeds: [...feeds, feed] }, { merge: true });
       setForm({ ...form, name: "", url: "" });
@@ -45,6 +48,15 @@ export default function GoogleCalendarSettings() {
 
   const remove = (id: string) =>
     confirm("Retirer cet agenda ?") && setDoc(ref, { feeds: feeds.filter((f) => f.id !== id) }, { merge: true });
+
+  const setColor = (id: string, color: string | undefined) =>
+    setDoc(ref, {
+      feeds: feeds.map((f) => {
+        if (f.id !== id) return f;
+        const { color: _old, ...rest } = f; // eslint-disable-line @typescript-eslint/no-unused-vars
+        return color ? { ...rest, color } : rest;
+      }),
+    }, { merge: true });
 
   async function enableExport() {
     const token = Array.from(crypto.getRandomValues(new Uint8Array(18)), (b) => b.toString(36).padStart(2, "0")).join("").replace(/[^a-z0-9]/g, "");
@@ -62,11 +74,22 @@ export default function GoogleCalendarSettings() {
       <div className="space-y-2">
         <h3 className="font-semibold">Afficher vos agendas Google ici</h3>
         {feeds.map((f) => (
-          <div key={f.id} className="flex items-center gap-2 rounded-xl bg-stone-100 px-3 py-2 text-sm">
-            <span className="flex-1"><b>{f.name}</b> <span className="text-stone-500">· {f.memberIds.map((id) => family.members.find((m) => m.id === id)?.name).join(", ")}</span></span>
-            <button className="text-stone-400 hover:text-red-600" onClick={() => remove(f.id)} aria-label="Retirer">×</button>
+          <div key={f.id} className="space-y-2 rounded-xl bg-stone-100 px-3 py-2 text-sm">
+            <div className="flex items-center gap-2">
+              <button onClick={() => setPicking(picking === f.id ? null : f.id)} title="Changer la couleur"
+                aria-label={`Couleur de ${f.name}`}
+                className="h-6 w-6 shrink-0 rounded-full border-2 border-white shadow"
+                style={{ background: f.color ?? "conic-gradient(#e11d48,#2563eb,#9333ea,#f59e0b,#e11d48)" }} />
+              <span className="flex-1"><b>{f.name}</b> <span className="text-stone-500">· {f.memberIds.map((id) => family.members.find((m) => m.id === id)?.name).join(", ")}</span></span>
+              <button className="text-stone-400 hover:text-red-600" onClick={() => remove(f.id)} aria-label="Retirer">×</button>
+            </div>
+            {picking === f.id && (
+              <ColorSwatches value={f.color} autoLabel="Couleurs des membres"
+                onChange={(c) => { setColor(f.id, c); setPicking(null); }} />
+            )}
           </div>
         ))}
+        {feeds.length > 0 && <p className="text-xs text-stone-500">Touche la pastille pour changer la couleur d&apos;un agenda (dans l&apos;app seulement).</p>}
         {errors.map((e) => <p key={e} className="text-sm text-red-600">{e}</p>)}
         <details className="text-sm text-stone-600">
           <summary className="cursor-pointer text-teal-700">Où trouver l&apos;adresse secrète ?</summary>

@@ -1,7 +1,10 @@
 "use client";
 import { useMemo, useState } from "react";
 import { useFamily } from "@/lib/family";
-import { useEvents } from "@/lib/useEvents";
+import { colorKey, useCalendarSettings, useEvents } from "@/lib/useEvents";
+import { deleteField, doc, setDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import ColorSwatches from "@/components/ColorSwatches";
 import type { CalendarEvent } from "@/lib/types";
 import {
   addDays, eventsOn, fmtLong, fmtMonth, fmtShort, fromISO, relativeDay,
@@ -19,6 +22,7 @@ const tint = (hex: string, alpha: number) =>
 export default function AgendaPage() {
   const { family, member } = useFamily();
   const { events: all, errors } = useEvents();
+  const eventColors = useCalendarSettings().eventColors ?? {};
   const [view, setViewState] = useState<View>(() => {
     if (typeof window === "undefined") return "mois";
     try {
@@ -58,6 +62,7 @@ export default function AgendaPage() {
 
   // Les enfants passent en premier : « Pédiatre Léa » prend la couleur de Léa même si un parent l'accompagne.
   const colors = (ev: CalendarEvent) => {
+    if (ev.color) return [ev.color];
     const ms = ev.memberIds.map((id) => member(id)).filter((m) => !!m);
     ms.sort((a, b) => (a.role === b.role ? 0 : a.role === "enfant" ? -1 : 1));
     return ms.length ? ms.map((m) => m.color) : ["#78716c"];
@@ -254,6 +259,17 @@ export default function AgendaPage() {
             <p className="first-letter:uppercase">📅 {fmtLong(viewing.date)}{viewing.ev.startTime && ` · ${viewing.ev.startTime}${viewing.ev.endTime ? ` – ${viewing.ev.endTime}` : ""}`}</p>
             {viewing.ev.location && <p>📍 {viewing.ev.location}</p>}
             <p>👥 {viewing.ev.memberIds.map((id) => member(id)?.name).join(", ")}</p>
+            <div className="space-y-1">
+              <span className="label">Couleur dans l&apos;app</span>
+              <ColorSwatches value={eventColors[colorKey(viewing.ev)]}
+                autoLabel={viewing.ev.source ? "Celle de l'agenda" : "Auto (membres)"}
+                onChange={(c) => {
+                  const key = colorKey(viewing.ev);
+                  if (family) setDoc(doc(db, "families", family.id, "settings", "calendars"),
+                    { eventColors: { [key]: c ?? deleteField() } }, { merge: true });
+                  setViewing(null);
+                }} />
+            </div>
             <p className="text-stone-500">
               {viewing.ev.source
                 ? `Vient de l'agenda Google « ${viewing.ev.source} » : modifie-le dans Google Agenda.`

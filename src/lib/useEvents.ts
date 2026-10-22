@@ -43,12 +43,16 @@ export function useCalendarSettings() {
 }
 
 /** Tous les événements à afficher : ceux de l'app, les anniversaires et les agendas Google liés. */
+/** Clé d'une couleur personnalisée pour un événement qui n'est pas stocké dans l'app (Google, anniversaire). */
+export const colorKey = (e: CalendarEvent) => (e.feedId ? `${e.feedId}:${e.uid}` : e.id);
+
 export function useEvents() {
   const { family, member } = useFamily();
   const { items, loading } = useCollection<CalendarEvent>("events");
   const settings = useCalendarSettings();
   const [external, setExternal] = useState<Record<string, FeedResult>>({});
   const feeds = settings.feeds;
+  const eventColors = useMemo(() => settings.eventColors ?? {}, [settings.eventColors]);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,10 +98,15 @@ export function useEvents() {
         id: `${f.id}_${e.id}`,
         memberIds: f.memberIds,
         source: f.name,
+        feedId: f.id,
       })),
     );
-    return [...own, ...ext];
-  }, [own, feeds, external]);
+    // Couleurs choisies dans l'app : par événement, sinon celle de l'agenda Google.
+    return [...own, ...ext].map((e) => {
+      const c = eventColors[colorKey(e)] ?? (e.feedId ? feeds?.find((f) => f.id === e.feedId)?.color : undefined);
+      return c ? { ...e, color: c } : e;
+    });
+  }, [own, feeds, external, eventColors]);
 
   const errors = (feeds ?? [])
     .filter((f) => external[f.id]?.error)

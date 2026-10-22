@@ -7,6 +7,7 @@ import { useFamily } from "@/lib/family";
 import type { CalendarEvent, Recurrence } from "@/lib/types";
 import Modal from "./Modal";
 import MemberPicker from "./MemberPicker";
+import ColorSwatches from "./ColorSwatches";
 import { googleTemplateUrl } from "@/lib/ical-export";
 
 const RECURRENCES: { value: Recurrence; label: string }[] = [
@@ -111,6 +112,10 @@ export default function EventForm({
         <div>
           <span className="label">Pour qui ?</span>
           <MemberPicker value={form.memberIds} onChange={(memberIds) => set({ memberIds })} />
+        </div>
+        <div>
+          <span className="label">Couleur</span>
+          <ColorSwatches value={form.color} autoLabel="Auto (membres)" onChange={(color) => set({ color })} />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>

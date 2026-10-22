@@ -40,7 +40,7 @@ export function parseIcs(ics: string, from: Date, to: Date): Omit<CalendarEvent,
 
   const out: Omit<CalendarEvent, "memberIds">[] = [];
   for (const it of items) {
-    const base = { title: it.title || "(sans titre)", recurrence: "none" as const, ...(it.location && { location: it.location }) };
+    const base = { uid: it.uid, title: it.title || "(sans titre)", recurrence: "none" as const, ...(it.location && { location: it.location }) };
     if (it.start.isDate) {
       // Journée entière, éventuellement sur plusieurs jours (la fin est exclusive).
       const d = new Date(Date.UTC(it.start.year, it.start.month - 1, it.start.day));

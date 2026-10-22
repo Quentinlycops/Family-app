@@ -104,9 +104,11 @@ export default function AccueilPage() {
                 <div key={ev.id + date} className="flex items-center gap-3 py-1">
                   <span className="w-12 text-sm font-semibold">{ev.startTime ?? (ev.endTime ? `→${ev.endTime}` : "—")}</span>
                   <span className="flex gap-0.5">
-                    {ev.memberIds.map((id) => (
-                      <span key={id} className="h-2.5 w-2.5 rounded-full" style={{ background: member(id)?.color }} />
-                    ))}
+                    {ev.color
+                      ? <span className="h-2.5 w-2.5 rounded-full" style={{ background: ev.color }} />
+                      : ev.memberIds.map((id) => (
+                        <span key={id} className="h-2.5 w-2.5 rounded-full" style={{ background: member(id)?.color }} />
+                      ))}
                   </span>
                   <span className="min-w-0 flex-1 truncate">{ev.title}</span>
                   {ev.source && <span className="chip">Google</span>}
