@@ -82,7 +82,14 @@ export default function EventForm({
             <div>
               <label className="label">Début</label>
               <input type="time" className="input" value={form.startTime}
-                onChange={(e) => set({ startTime: e.target.value })} required />
+                onChange={(e) => {
+                  // La fin suit le début : on garde la même durée (1 h par défaut).
+                  const start = e.target.value;
+                  const toMin = (t?: string) => (t ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) : NaN);
+                  const dur = toMin(form.endTime) - toMin(form.startTime);
+                  const end = Math.min(toMin(start) + (dur > 0 ? dur : 60), 23 * 60 + 59);
+                  set({ startTime: start, endTime: start ? `${String(Math.floor(end / 60)).padStart(2, "0")}:${String(end % 60).padStart(2, "0")}` : form.endTime });
+                }} required />
             </div>
             <div>
               <label className="label">Fin</label>

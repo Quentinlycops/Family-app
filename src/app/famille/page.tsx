@@ -55,10 +55,10 @@ export default function FamillePage() {
           <input className="input" value={name} onChange={(e) => setName(e.target.value)} placeholder="ex. Famille Lycops" />
         </label>
         {members.map((m) => (
-          <div key={m.id} className="flex items-center gap-3">
+          <div key={m.id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
             <input type="color" value={m.color} onChange={(e) => update(m.id, { color: e.target.value })}
               className="h-10 w-10 shrink-0 cursor-pointer rounded-full border-0 bg-transparent" aria-label={`Couleur de ${m.name}`} />
-            <div className="min-w-0 flex-1">
+            <div className="min-w-0 flex-1 basis-40">
               <input className="w-full bg-transparent font-medium outline-none" value={m.name}
                 onChange={(e) => update(m.id, { name: e.target.value })} />
               <p className="text-xs text-stone-500">
@@ -67,7 +67,7 @@ export default function FamillePage() {
                 {m.role === "parent" && (m.uid ? " · compte lié" : " · pas encore de compte")}
               </p>
             </div>
-            <input type="date" className="input w-40" value={m.birthDate}
+            <input type="date" className="input ml-13 w-auto sm:ml-0" aria-label={`Date de naissance de ${m.name}`} value={m.birthDate}
               onChange={(e) => update(m.id, { birthDate: e.target.value })} />
           </div>
         ))}

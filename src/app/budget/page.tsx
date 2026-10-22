@@ -97,7 +97,7 @@ export default function BudgetPage() {
         </select>
         <input type="date" className="input" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
         <select className="input" value={form.paidBy || me?.id} onChange={(e) => setForm({ ...form, paidBy: e.target.value })}>
-          {parents.map((p) => <option key={p.id} value={p.id}>Payé par {p.name}</option>)}
+          {parents.map((p) => <option key={p.id} value={p.id}>{p.name} a payé</option>)}
         </select>
         <button className="btn col-span-2">Ajouter la dépense</button>
       </form>
