@@ -84,7 +84,7 @@ export type BudgetSettings = {
 };
 
 export type KidProfile = {
-  sizes?: { clothes?: string; shoes?: string; diapers?: string; updated?: string };
+  sizes?: { clothes?: string; shoes?: string; head?: string; updated?: string };
   growth?: { date: string; weight?: number; height?: number }[];
   health?: { doctor?: string; allergies?: string; bloodType?: string; notes?: string };
   vaccines?: { name: string; date?: string; nextDue?: string }[];

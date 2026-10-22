@@ -61,7 +61,7 @@ function KidCard({ kid, fid }: { kid: Member; fid: string }) {
       <div className="card">
         <h3 className="mb-2 font-semibold">👕 Tailles</h3>
         <div className="grid grid-cols-3 gap-2">
-          {([["clothes", "Vêtements", "ex. 4 ans"], ["shoes", "Chaussures", "ex. 26"], ["diapers", "Couches", "ex. T5"]] as const).map(([k, label, ph]) => (
+          {([["clothes", "Vêtements", "ex. 4 ans"], ["shoes", "Chaussures", "ex. 26"], ["head", "Tour de tête", "ex. 50 cm"]] as const).map(([k, label, ph]) => (
             <label key={k} className="text-sm">
               <span className="label">{label}</span>
               <input className="input" placeholder={ph} defaultValue={p.sizes?.[k] ?? ""}
