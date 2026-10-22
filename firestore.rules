@@ -1,0 +1,30 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function inFamily(fid) {
+      return signedIn() &&
+        request.auth.uid in get(/databases/$(database)/documents/families/$(fid)).data.memberUids;
+    }
+
+    match /users/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    match /families/{fid} {
+      // Le code de famille est l'identifiant du document : il faut le connaître pour la lire.
+      allow get: if signedIn();
+      allow create: if signedIn() && request.resource.data.memberUids == [request.auth.uid];
+      allow update: if inFamily(fid) || (
+        signedIn() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberUids', 'members']) &&
+        request.resource.data.memberUids.removeAll(resource.data.memberUids) == [request.auth.uid] &&
+        request.resource.data.memberUids.hasAll(resource.data.memberUids)
+      );
+
+      match /{col}/{doc} {
+        allow read, write: if inFamily(fid);
+      }
+    }
+  }
+}
