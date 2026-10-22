@@ -12,6 +12,8 @@ const MESSAGES: Record<string, string> = {
   "auth/email-already-in-use": "Un compte existe déjà avec cet email.",
   "auth/weak-password": "Le mot de passe doit faire au moins 6 caractères.",
   "auth/invalid-email": "Adresse email invalide.",
+  "auth/too-many-requests": "Trop de tentatives, réessaie dans quelques minutes.",
+  "auth/network-request-failed": "Pas de connexion internet.",
 };
 
 export default function Login() {
@@ -31,7 +33,7 @@ export default function Login() {
       else await createUserWithEmailAndPassword(auth, email, password);
     } catch (err) {
       const code = (err as { code?: string }).code ?? "";
-      setError(MESSAGES[code] ?? "Une erreur est survenue, réessaie.");
+      setError(MESSAGES[code] ?? `Une erreur est survenue (${code || (err as Error).message}).`);
     } finally {
       setBusy(false);
     }
