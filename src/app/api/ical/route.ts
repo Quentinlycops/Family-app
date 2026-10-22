@@ -8,7 +8,8 @@ export async function GET(req: NextRequest) {
   const raw = req.nextUrl.searchParams.get("url") ?? "";
   let url: URL;
   try {
-    url = new URL(raw.replace(/^webcal:/, "https:"));
+    url = new URL(raw.trim().replace(/^webcal:/, "https:"));
+    url.pathname = url.pathname.replace(/@/g, "%40");
   } catch {
     return NextResponse.json({ error: "Adresse invalide." }, { status: 400 });
   }
@@ -21,8 +22,12 @@ export async function GET(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Agenda injoignable pour le moment." }, { status: 502 });
   }
-  if (!res.ok)
-    return NextResponse.json({ error: `L'agenda a répondu ${res.status}. Vérifie l'adresse secrète.` }, { status: 502 });
+  if (!res.ok) {
+    const hint = url.pathname.includes("/public/")
+      ? "C'est l'adresse publique : copie plutôt l'« adresse secrète au format iCal » (elle contient « private- »)."
+      : "Vérifie que l'adresse secrète a été copiée en entier.";
+    return NextResponse.json({ error: `Google ne trouve pas cet agenda (${res.status}). ${hint}` }, { status: 502 });
+  }
   const ics = await res.text();
   if (!ics.includes("BEGIN:VCALENDAR"))
     return NextResponse.json({ error: "Ce lien ne renvoie pas un agenda iCal." }, { status: 502 });
