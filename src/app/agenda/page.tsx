@@ -12,6 +12,7 @@ import {
 } from "@/lib/dates";
 import EventForm from "@/components/EventForm";
 import Modal from "@/components/Modal";
+import AgendaColors from "@/components/AgendaColors";
 
 type View = "mois" | "semaine" | "liste";
 
@@ -39,6 +40,7 @@ export default function AgendaPage() {
   const [filter, setFilter] = useState<string[]>([]);
   const [editing, setEditing] = useState<CalendarEvent | "new" | null>(null);
   const [viewing, setViewing] = useState<{ ev: CalendarEvent; date: string } | null>(null);
+  const [colorsOpen, setColorsOpen] = useState(false);
 
   const events = useMemo(
     () => filter.length ? all.filter((e) => e.memberIds.some((id) => filter.includes(id))) : all,
@@ -147,6 +149,8 @@ export default function AgendaPage() {
             </button>
           );
         })}
+        <button onClick={() => setColorsOpen(true)} title="Changer les couleurs"
+          className="rounded-full border-2 border-stone-200 px-2.5 py-0.5 text-sm text-stone-600">🎨 Couleurs</button>
       </div>
 
       {view === "mois" && (
@@ -253,6 +257,7 @@ export default function AgendaPage() {
       {editing && (
         <EventForm event={editing === "new" ? undefined : editing} date={selected} onClose={() => setEditing(null)} />
       )}
+      {colorsOpen && <AgendaColors onClose={() => setColorsOpen(false)} />}
       {viewing && (
         <Modal title={viewing.ev.title} onClose={() => setViewing(null)}>
           <div className="space-y-2 text-sm">

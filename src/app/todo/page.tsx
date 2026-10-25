@@ -49,7 +49,7 @@ export default function TodoPage() {
         <span className={`flex-1 ${t.done ? "text-stone-400 line-through" : ""}`}>
           {t.title}
           <span className="block text-xs text-stone-500">
-            {m && <b style={{ color: m.color }}>{m.name}</b>}
+            {m && <b>{m.name}</b>}
             {m && t.dueDate && " · "}
             {t.dueDate && <span className={late ? "font-semibold text-red-600" : ""}>{fmtShort(t.dueDate)}</span>}
           </span>
