@@ -78,6 +78,11 @@ export default function BudgetPage() {
         <button className="btn-ghost" onClick={() => shift(1)}>›</button>
       </div>
 
+      <section className="card space-y-2">
+        <h2 className="font-semibold">Ajouter un ticket ou une facture</h2>
+        <ScanButtons settings={settings} />
+      </section>
+
       <section className="card">
         <div className="flex items-baseline justify-between">
           <span className="text-sm text-stone-500">Dépensé</span>
@@ -92,7 +97,7 @@ export default function BudgetPage() {
       </section>
 
       <form onSubmit={add} className="card grid grid-cols-2 gap-2">
-        <div className="col-span-2 mb-1"><ScanButtons settings={settings} /></div>
+        <h2 className="col-span-2 font-semibold">Saisie manuelle</h2>
         <input className="input col-span-2" placeholder="Libellé (ex. Carrefour)" value={form.label}
           onChange={(e) => setForm({ ...form, label: e.target.value })} />
         <input className="input" inputMode="decimal" placeholder="Montant €" value={form.amount}

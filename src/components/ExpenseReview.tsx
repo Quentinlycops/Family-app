@@ -120,9 +120,11 @@ export function ScanButtons({ settings }: { settings: BudgetSettings }) {
     }
   }
 
-  const picker = (label: string, accept: string, capture?: boolean) => (
-    <label className="btn-ghost flex-1 cursor-pointer ring-1 ring-stone-200">
-      {label}
+  const picker = (icon: string, label: string, hint: string, accept: string, capture?: boolean) => (
+    <label className="btn flex-1 cursor-pointer flex-col py-3 text-center">
+      <span className="text-2xl">{icon}</span>
+      <span>{label}</span>
+      <span className="text-xs font-normal opacity-80">{hint}</span>
       <input type="file" accept={accept} capture={capture ? "environment" : undefined} className="hidden" disabled={!!busy}
         onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) read(f); }} />
     </label>
@@ -131,8 +133,8 @@ export function ScanButtons({ settings }: { settings: BudgetSettings }) {
   return (
     <>
       <div className="flex gap-2">
-        {picker("📷 Scanner un ticket", "image/*", true)}
-        {picker("📄 Importer une facture", "image/*,application/pdf")}
+        {picker("📷", "Scanner un ticket", "prendre une photo", "image/*", true)}
+        {picker("📄", "Importer une facture", "PDF ou image", "image/*,application/pdf")}
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       {busy && (
