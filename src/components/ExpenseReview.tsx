@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { addDoc, doc, getDoc, setDoc, updateDoc, deleteField } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 import { useFamily } from "@/lib/family";
 import { familyCol } from "@/lib/useCollection";
 import { today } from "@/lib/dates";
@@ -12,26 +12,6 @@ import MemberPicker from "@/components/MemberPicker";
 const euro = (n: number) => n.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
 const num = (s: string) => parseFloat(s.replace(",", ".").replace(/\s/g, ""));
 const MAX_KEPT = 900_000; // une image gardée doit tenir dans un document Firestore (1 Mo)
-
-/** Réduit une photo : une version nette pour la lecture, une plus légère à garder. */
-async function shrink(file: File, max: number, quality: number) {
-  const url = URL.createObjectURL(file);
-  try {
-    const img = new Image();
-    img.src = url;
-    await img.decode();
-    const scale = Math.min(1, max / Math.max(img.width, img.height));
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.round(img.width * scale);
-    canvas.height = Math.round(img.height * scale);
-    canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
-    const blob = await new Promise<Blob>((ok, ko) =>
-      canvas.toBlob((b) => (b ? ok(b) : ko(new Error("image"))), "image/jpeg", quality));
-    return blob;
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
 
 const toDataUrl = (b: Blob) =>
   new Promise<string>((ok, ko) => {
@@ -97,50 +77,45 @@ const fromScan = (s: ScanResult, categories: string[], paidBy: string, allIds: s
 });
 
 /**
- * Boutons « Scanner un ticket » / « Importer une facture » : envoie le document à /api/scan,
- * puis ouvre l'écran de vérification.
+ * Boutons « Scanner un ticket » / « Importer une facture » : le document est lu dans le navigateur
+ * (texte du PDF ou OCR), analysé par règles, puis ouvert dans l'écran de vérification.
  */
 export function ScanButtons({ settings }: { settings: BudgetSettings }) {
   const { family, me } = useFamily();
-  const [busy, setBusy] = useState<string>();
+  const [busy, setBusy] = useState<{ image?: string; label: string; pct?: number }>();
   const [error, setError] = useState<string>();
-  const [review, setReview] = useState<{ draft: Draft; scan?: string; preview?: string }>();
+  const [review, setReview] = useState<{ draft: Draft; scan?: string; preview: string; text: string }>();
   if (!family) return null;
   const parents = family.members.filter((m) => m.role === "parent");
 
   async function read(file: File) {
     setError(undefined);
     const isPdf = file.type === "application/pdf";
-    const preview = isPdf ? undefined : URL.createObjectURL(file);
-    setBusy(preview ?? "pdf");
+    const image = isPdf ? undefined : URL.createObjectURL(file);
+    setBusy({ image, label: "Préparation…" });
     try {
-      let upload: Blob = file;
-      let kept: string | undefined;
+      const [{ readDocument }, { parseReceipt }] = await Promise.all([import("@/lib/receipt-read"), import("@/lib/receipt-parse")]);
+      const { text, preview } = await readDocument(file, (label, pct) => setBusy({ image, label, pct }));
+      // On garde le PDF d'origine s'il est léger, sinon l'image de la première page.
+      let kept: string | undefined = preview;
       if (isPdf) {
         const data = await toDataUrl(file);
         if (data.length < MAX_KEPT) kept = data;
-      } else {
-        upload = await shrink(file, 2000, 0.85);
-        kept = await toDataUrl(await shrink(file, 1100, 0.6));
-        if (kept.length > MAX_KEPT) kept = undefined;
       }
-      const body = new FormData();
-      body.append("file", upload, isPdf ? file.name : "ticket.jpg");
-      body.append("categories", settings.categories.map((c) => c.name).join(", "));
-      const token = await auth.currentUser?.getIdToken();
-      const res = await fetch("/api/scan", { method: "POST", body, headers: { Authorization: `Bearer ${token}` } });
-      const json = await res.json().catch(() => ({ error: "Réponse illisible du serveur." }));
-      if (!res.ok) throw new Error(json.error ?? "Lecture impossible.");
+      if (kept.length > MAX_KEPT) kept = undefined;
+      const names = settings.categories.map((c) => c.name);
       setReview({
-        draft: fromScan(json as ScanResult, settings.categories.map((c) => c.name),
+        draft: fromScan(parseReceipt(text, names), names,
           me?.role === "parent" ? me.id : parents[0].id, family!.members.map((m) => m.id)),
         scan: kept,
         preview,
+        text,
       });
     } catch (e) {
-      setError(e instanceof Error && e.message !== "image" ? e.message : "Cette image n'a pas pu être ouverte.");
-      if (preview) URL.revokeObjectURL(preview);
+      console.error(e);
+      setError(isPdf ? "Ce PDF n'a pas pu être lu." : "Cette image n'a pas pu être lue.");
     } finally {
+      if (image) URL.revokeObjectURL(image);
       setBusy(undefined);
     }
   }
@@ -164,14 +139,19 @@ export function ScanButtons({ settings }: { settings: BudgetSettings }) {
         <Modal title="Lecture en cours…" onClose={() => {}}>
           <div className="flex flex-col items-center gap-3 py-4 text-sm text-stone-500">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            {busy !== "pdf" && <img src={busy} alt="" className="max-h-60 rounded-xl object-contain opacity-70" />}
-            <span className="animate-pulse">Je relève le magasin, la date et les montants…</span>
+            {busy.image && <img src={busy.image} alt="" className="max-h-60 rounded-xl object-contain opacity-70" />}
+            <span className="animate-pulse">{busy.label}</span>
+            {busy.pct != null && (
+              <div className="h-2 w-full max-w-xs rounded-full bg-stone-100">
+                <div className="h-2 rounded-full bg-teal-600 transition-all" style={{ width: `${busy.pct}%` }} />
+              </div>
+            )}
           </div>
         </Modal>
       )}
       {review && (
         <ExpenseReview initial={review.draft} settings={settings} scan={review.scan} preview={review.preview}
-          onClose={() => { if (review.preview) URL.revokeObjectURL(review.preview); setReview(undefined); }} />
+          text={review.text} onClose={() => setReview(undefined)} />
       )}
     </>
   );
@@ -182,12 +162,13 @@ export function EditExpense({ expense, settings, onClose }: { expense: Expense; 
   return <ExpenseReview initial={fromExpense(expense)} settings={settings} expense={expense} onClose={onClose} />;
 }
 
-function ExpenseReview({ initial, settings, expense, scan, preview, onClose }: {
+function ExpenseReview({ initial, settings, expense, scan, preview, text, onClose }: {
   initial: Draft;
   settings: BudgetSettings;
   expense?: Expense;
   scan?: string; // image ou PDF (data URL) à garder avec la dépense
   preview?: string;
+  text?: string; // texte reconnu, pour comparer
   onClose: () => void;
 }) {
   const { family } = useFamily();
@@ -364,6 +345,13 @@ function ExpenseReview({ initial, settings, expense, scan, preview, onClose }: {
             </Field>
           </div>
         </details>
+
+        {text != null && (
+          <details className="rounded-xl ring-1 ring-stone-200">
+            <summary className="cursor-pointer px-3 py-2 text-sm font-medium">Texte reconnu</summary>
+            <pre className="max-h-48 overflow-auto whitespace-pre-wrap px-3 pb-3 text-xs text-stone-500">{text.trim() || "Aucun texte trouvé."}</pre>
+          </details>
+        )}
 
         <button className="btn w-full" disabled={saving}>{expense ? "Enregistrer" : "Valider et ajouter"}</button>
       </form>

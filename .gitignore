@@ -45,3 +45,4 @@ next-env.d.ts
 # firebase
 *-debug.log
 .firebase/
+/public/ocr
