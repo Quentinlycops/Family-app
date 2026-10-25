@@ -7,6 +7,7 @@ import { familyCol, useCollection } from "@/lib/useCollection";
 import { fmtMonth, fmtShort, today } from "@/lib/dates";
 import type { BudgetSettings, Expense } from "@/lib/types";
 import Modal from "@/components/Modal";
+import { EditExpense, ScanButtons } from "@/components/ExpenseReview";
 
 const DEFAULT_CATEGORIES = [
   { name: "Courses", monthly: 600 },
@@ -27,6 +28,8 @@ export default function BudgetPage() {
   const [month, setMonth] = useState(today().slice(0, 7));
   const [settings, setSettings] = useState<BudgetSettings>({ categories: DEFAULT_CATEGORIES });
   const [editingBudget, setEditingBudget] = useState(false);
+  const [editing, setEditing] = useState<Expense>();
+  const [catFilter, setCatFilter] = useState<string>();
   const fid = family?.id;
 
   useEffect(() => {
@@ -61,6 +64,7 @@ export default function BudgetPage() {
   };
 
   const monthly = items.filter((e) => e.date.startsWith(month)).sort((a, b) => b.date.localeCompare(a.date));
+  const shown = catFilter ? monthly.filter((e) => e.category === catFilter) : monthly;
   const total = monthly.reduce((s, e) => s + e.amount, 0);
   const planned = settings.categories.reduce((s, c) => s + c.monthly, 0);
   const spentIn = (cat: string) => monthly.filter((e) => e.category === cat).reduce((s, e) => s + e.amount, 0);
@@ -88,6 +92,7 @@ export default function BudgetPage() {
       </section>
 
       <form onSubmit={add} className="card grid grid-cols-2 gap-2">
+        <div className="col-span-2 mb-1"><ScanButtons settings={settings} /></div>
         <input className="input col-span-2" placeholder="Libellé (ex. Carrefour)" value={form.label}
           onChange={(e) => setForm({ ...form, label: e.target.value })} />
         <input className="input" inputMode="decimal" placeholder="Montant €" value={form.amount}
@@ -111,7 +116,8 @@ export default function BudgetPage() {
           const spent = spentIn(c.name);
           const pct = c.monthly ? Math.min(100, (spent / c.monthly) * 100) : 0;
           return (
-            <div key={c.name}>
+            <button key={c.name} type="button" className={`block w-full text-left ${catFilter && catFilter !== c.name ? "opacity-40" : ""}`}
+              onClick={() => setCatFilter(catFilter === c.name ? undefined : c.name)}>
               <div className="flex justify-between text-sm">
                 <span>{c.name}</span>
                 <span className={spent > c.monthly ? "font-semibold text-red-600" : "text-stone-500"}>
@@ -121,31 +127,42 @@ export default function BudgetPage() {
               <div className="mt-1 h-2 rounded-full bg-stone-100">
                 <div className={`h-2 rounded-full ${spent > c.monthly ? "bg-red-500" : "bg-teal-600"}`} style={{ width: `${pct}%` }} />
               </div>
-            </div>
+            </button>
           );
         })}
       </section>
 
       <section className="card">
-        <h2 className="mb-2 font-semibold">Dépenses du mois</h2>
-        {monthly.length === 0 && <p className="text-sm text-stone-400">Aucune dépense.</p>}
+        <div className="mb-2 flex items-center justify-between">
+          <h2 className="font-semibold">Dépenses du mois</h2>
+          {catFilter && <button className="chip" onClick={() => setCatFilter(undefined)}>{catFilter} ×</button>}
+        </div>
+        {shown.length === 0 && <p className="text-sm text-stone-400">Aucune dépense.</p>}
         <ul className="divide-y divide-stone-100">
-          {monthly.map((e) => (
+          {shown.map((e) => (
             <li key={e.id} className="flex items-center gap-3 py-2 text-sm">
-              <span className="w-20 text-stone-500">{fmtShort(e.date)}</span>
-              <span className="flex-1">
-                {e.label}
-                <span className="block text-xs text-stone-400">
-                  {e.category} · <span style={{ color: member(e.paidBy)?.color }}>{member(e.paidBy)?.name}</span>
+              <button className="flex flex-1 items-center gap-3 text-left" onClick={() => setEditing(e)}>
+                <span className="w-20 text-stone-500">{fmtShort(e.date)}</span>
+                <span className="flex-1">
+                  {e.label}{e.hasScan && <span className="ml-1 text-xs" aria-label="Document joint">📎</span>}
+                  <span className="block text-xs text-stone-400">
+                    {e.category} · {e.memberIds?.length ? e.memberIds.map((id) => member(id)?.name).filter(Boolean).join(", ") : "Tout le monde"}
+                  </span>
                 </span>
-              </span>
-              <b>{euro(e.amount)}</b>
+                <b>{euro(e.amount)}</b>
+              </button>
               <button className="text-stone-400 hover:text-red-600" aria-label="Supprimer"
-                onClick={() => confirm("Supprimer cette dépense ?") && deleteDoc(doc(db, "families", family.id, "expenses", e.id))}>×</button>
+                onClick={async () => {
+                  if (!confirm("Supprimer cette dépense ?")) return;
+                  await deleteDoc(doc(db, "families", family.id, "expenses", e.id));
+                  if (e.hasScan) await deleteDoc(doc(db, "families", family.id, "receipts", e.id));
+                }}>×</button>
             </li>
           ))}
         </ul>
       </section>
+
+      {editing && <EditExpense expense={editing} settings={settings} onClose={() => setEditing(undefined)} />}
 
       {editingBudget && (
         <BudgetEditor settings={settings} onClose={() => setEditingBudget(false)}
