@@ -107,3 +107,44 @@ export type CalendarSettings = {
   exportToken?: string; // jeton de l'agenda familial publié pour Google Agenda
   eventColors?: Record<string, string>; // couleur choisie pour un événement Google, clé `${feedId}:${uid}`
 };
+
+export type Trip = {
+  id: string;
+  name: string;
+  destination?: string;
+  startDate: string; // AAAA-MM-JJ
+  endDate: string;
+  memberIds: string[];
+  stay?: { name?: string; address?: string; phone?: string; checkIn?: string; checkOut?: string };
+  info?: string; // infos pratiques en texte libre
+  createdAt: number;
+};
+
+export type TripDocKind = "avion" | "train" | "hebergement" | "location" | "autre";
+
+/** Billet ou document d'un voyage. Le fichier lui-même est rangé à part, dans `tripFiles/{id}`. */
+export type TripDoc = {
+  id: string;
+  tripId: string;
+  kind: TripDocKind;
+  title: string;
+  date?: string;
+  time?: string;
+  from?: string;
+  to?: string;
+  reference?: string; // code de réservation
+  memberIds: string[];
+  link?: string;
+  notes?: string;
+  file?: { name: string; type: string; size: number };
+  createdAt: number;
+};
+
+export type TripExpense = {
+  id: string;
+  tripId: string;
+  label: string;
+  amount: number;
+  date: string;
+  paidBy: string; // id membre
+};

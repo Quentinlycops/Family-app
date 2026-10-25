@@ -7,7 +7,7 @@ import { useFamily } from "@/lib/family";
 import { useCollection } from "@/lib/useCollection";
 import { useEvents } from "@/lib/useEvents";
 import { ageLabel, fmtLong, nextBirthday, relativeDay, today, upcoming } from "@/lib/dates";
-import type { BudgetSettings, Expense, MealSlot, Recipe, ShoppingItem, Todo } from "@/lib/types";
+import type { BudgetSettings, Expense, MealSlot, Recipe, ShoppingItem, Todo, Trip } from "@/lib/types";
 
 const euro = (n: number) => n.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 
@@ -36,6 +36,7 @@ export default function AccueilPage() {
   const { items: meals } = useCollection<MealSlot>("meals");
   const { items: recipes } = useCollection<Recipe>("recipes");
   const { items: expenses } = useCollection<Expense>("expenses");
+  const { items: trips } = useCollection<Trip>("trips");
   const [budget, setBudget] = useState<BudgetSettings>();
   const fid = family?.id;
 
@@ -84,6 +85,7 @@ export default function AccueilPage() {
   const spent = expenses.filter((e) => e.date.startsWith(month)).reduce((s, e) => s + e.amount, 0);
   const planned = (budget?.categories ?? []).reduce((s, c) => s + c.monthly, 0) || 1500;
   const kids = family.members.filter((m) => m.role === "enfant");
+  const nextTrip = trips.filter((t) => t.endDate >= now).sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
 
   return (
     <div className="space-y-4">
@@ -162,6 +164,19 @@ export default function AccueilPage() {
           <div className={`h-2 rounded-full ${spent > planned ? "bg-red-500" : "bg-teal-600"}`}
             style={{ width: `${Math.min(100, (spent / planned) * 100)}%` }} />
         </div>
+      </Link>
+
+      <Link href={nextTrip ? `/voyages#${nextTrip.id}` : "/voyages"} className="card flex items-center gap-3">
+        <span className="text-2xl">🧳</span>
+        <span className="min-w-0 flex-1">
+          <b className="block">Voyages</b>
+          <span className="block truncate text-sm text-stone-500">
+            {nextTrip
+              ? `${nextTrip.name} · ${nextTrip.startDate <= now ? "en cours" : `départ ${relativeDay(nextTrip.startDate).toLowerCase()}`}`
+              : "Billets, hébergement et infos pratiques"}
+          </span>
+        </span>
+        <span className="text-stone-400">›</span>
       </Link>
 
       <Section title="Les enfants" href="/enfants">
