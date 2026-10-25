@@ -103,15 +103,7 @@ export default function AccueilPage() {
               {list.map(({ ev }) => (
                 <div key={ev.id + date} className="flex items-center gap-3 py-1">
                   <span className="w-12 text-sm font-semibold">{ev.startTime ?? (ev.endTime ? `→${ev.endTime}` : "—")}</span>
-                  <span className="flex gap-0.5">
-                    {ev.color
-                      ? <span className="h-2.5 w-2.5 rounded-full" style={{ background: ev.color }} />
-                      : ev.memberIds.map((id) => (
-                        <span key={id} className="h-2.5 w-2.5 rounded-full" style={{ background: member(id)?.color }} />
-                      ))}
-                  </span>
                   <span className="min-w-0 flex-1 truncate">{ev.title}</span>
-                  {ev.source && <span className="chip">Google</span>}
                 </div>
               ))}
             </div>
@@ -145,9 +137,7 @@ export default function AccueilPage() {
                   {relativeDay(t.dueDate)}
                 </span>
               )}
-              {member(t.assigneeId) && (
-                <span className="h-2.5 w-2.5 rounded-full" style={{ background: member(t.assigneeId)?.color }} />
-              )}
+              {member(t.assigneeId) && <span className="text-xs text-stone-500">{member(t.assigneeId)?.name}</span>}
             </li>
           ))}
         </ul>
@@ -182,11 +172,11 @@ export default function AccueilPage() {
 
       <Section title="🎂 Anniversaires">
         <ul className="space-y-1 text-sm">
-          {birthdays.map(({ m, days, age }) => (
+          {birthdays.map(({ m, date, age }) => (
             <li key={m.id} className="flex justify-between">
               <span><b style={{ color: m.color }}>{m.name}</b> aura {age} ans</span>
-              <span className={days <= 7 ? "font-semibold text-teal-700" : "text-stone-500"}>
-                {days === 0 ? "aujourd'hui 🎉" : days === 1 ? "demain" : `dans ${days} jours`}
+              <span className={date === now ? "font-semibold text-teal-700" : "text-stone-500"}>
+                {date === now ? "aujourd'hui 🎉" : fmtLong(date).replace(/^\S+ /, "")}
               </span>
             </li>
           ))}
