@@ -77,6 +77,40 @@ export type Expense = {
   category: string;
   date: string;
   paidBy: string; // id membre
+  memberIds?: string[]; // personnes concernées, absent = tout le monde
+  time?: string; // HH:mm
+  store?: string;
+  kind?: "ticket" | "facture";
+  items?: ExpenseItem[];
+  vat?: number;
+  paymentMethod?: string;
+  invoiceNumber?: string;
+  dueDate?: string;
+  notes?: string;
+  hasScan?: boolean; // image conservée dans receipts/{id}
+};
+
+export type ExpenseItem = { label: string; quantity?: number; amount: number };
+
+/** Ce que la lecture automatique renvoie (voir /api/scan). */
+export type ScanResult = {
+  kind: "ticket" | "facture" | "autre";
+  store: string | null;
+  address: string | null;
+  date: string | null;
+  time: string | null;
+  total: number | null;
+  subtotal: number | null;
+  vat: number | null;
+  discount: number | null;
+  currency: string;
+  paymentMethod: string | null;
+  invoiceNumber: string | null;
+  dueDate: string | null;
+  period: string | null;
+  items: { label: string; quantity: number | null; amount: number }[];
+  suggestedCategory: string | null;
+  notes: string | null;
 };
 
 export type BudgetSettings = {
