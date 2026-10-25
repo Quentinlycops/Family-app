@@ -6,7 +6,7 @@ import { db } from "@/lib/firebase";
 import { useFamily } from "@/lib/family";
 import { useCollection } from "@/lib/useCollection";
 import { useEvents } from "@/lib/useEvents";
-import { ageLabel, fmtLong, nextBirthday, relativeDay, today, upcoming } from "@/lib/dates";
+import { ageLabel, fmtLong, fmtShort, nextBirthday, relativeDay, today, upcoming } from "@/lib/dates";
 import type { BudgetSettings, Expense, MealSlot, Recipe, ShoppingItem, Todo, Trip } from "@/lib/types";
 
 const euro = (n: number) => n.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
@@ -96,20 +96,41 @@ export default function AccueilPage() {
 
       <Section title="Prochains événements" href="/agenda">
         {next.length === 0 && <p className="py-2 text-sm text-stone-400">Rien de prévu ces deux prochaines semaines.</p>}
-        <div className="space-y-3">
-          {Object.entries(byDay).map(([date, list]) => (
-            <div key={date}>
-              <p className={`text-xs font-semibold uppercase tracking-wide ${date === now ? "text-teal-700" : "text-stone-400"}`}>
-                {relativeDay(date)}
-              </p>
-              {list.map(({ ev }) => (
-                <div key={ev.id + date} className="flex items-center gap-3 py-1">
-                  <span className="w-12 text-sm font-semibold">{ev.startTime ?? (ev.endTime ? `→${ev.endTime}` : "—")}</span>
-                  <span className="min-w-0 flex-1 truncate">{ev.title}</span>
-                </div>
-              ))}
-            </div>
-          ))}
+        <div className="space-y-4">
+          {Object.entries(byDay).map(([date, list]) => {
+            const rel = relativeDay(date);
+            const named = rel === "Aujourd'hui" || rel === "Demain";
+            return (
+              <div key={date} className="space-y-1.5">
+                <p className="text-sm font-semibold first-letter:uppercase">
+                  <span className={date === now ? "text-teal-700" : ""}>{named ? rel : fmtLong(date)}</span>
+                  {named && <span className="font-normal text-stone-400"> · {fmtLong(date)}</span>}
+                </p>
+                {list.map(({ ev }) => {
+                  const details = [
+                    ev.memberIds.map((id) => member(id)?.name).filter(Boolean).join(", "),
+                    ev.location && `📍 ${ev.location}`,
+                    ev.endDate && ev.endDate > date && `jusqu'au ${fmtShort(ev.endDate)}`,
+                  ].filter(Boolean).join(" · ");
+                  return (
+                    <Link key={ev.id + date} href="/agenda"
+                      className="flex items-center gap-3 rounded-xl bg-stone-100/70 px-3 py-2 hover:bg-stone-100">
+                      <span className="flex w-14 shrink-0 flex-col text-xs leading-tight text-stone-500">
+                        {ev.startTime
+                          ? <><b className="text-base text-stone-800">{ev.startTime}</b>{ev.endTime && `→ ${ev.endTime}`}</>
+                          : ev.endTime ? <>jusqu&apos;à<b className="text-base text-stone-800">{ev.endTime}</b></>
+                          : <b className="text-stone-700">Journée</b>}
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-medium">{ev.title}</span>
+                        {details && <span className="block truncate text-xs text-stone-500">{details}</span>}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            );
+          })}
         </div>
       </Section>
 
