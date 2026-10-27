@@ -13,7 +13,6 @@ import MemberPicker from "@/components/MemberPicker";
 
 const euro = (n: number) => n.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
 const num = (s: string) => parseFloat(s.replace(",", ".").replace(/\s/g, ""));
-const PAYMENTS = ["Carte bancaire", "Espèces", "Virement", "Prélèvement", "Chèque", "Titre-restaurant"];
 
 type Draft = {
   label: string;
@@ -101,10 +100,6 @@ export default function ExpenseForm({ settings, expense, onClose }: {
   const allIds = family.members.map((m) => m.id);
   const everyone = d.memberIds.length === 0 || d.memberIds.length === allIds.length;
   const total = num(d.amount);
-  const itemsSum = d.items.reduce((s, i) => s + (num(i.amount) || 0), 0);
-  const mismatch = d.items.length > 0 && total > 0 && Math.abs(itemsSum - total) > 0.05;
-  const setItem = (i: number, patch: Partial<Draft["items"][number]>) =>
-    set({ items: d.items.map((it, j) => (j === i ? { ...it, ...patch } : it)) });
 
   async function attach(f: File) {
     setFileError(undefined);
@@ -258,16 +253,6 @@ export default function ExpenseForm({ settings, expense, onClose }: {
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <Field label="Moyen de paiement" className="col-span-2">
-            <select className="input" value={d.paymentMethod} onChange={(e) => set({ paymentMethod: e.target.value })}>
-              <option value="">—</option>
-              {[...PAYMENTS, ...(d.paymentMethod && !PAYMENTS.includes(d.paymentMethod) ? [d.paymentMethod] : [])]
-                .map((p) => <option key={p}>{p}</option>)}
-            </select>
-          </Field>
-        </div>
-
         {/* Justificatif */}
         <div className="rounded-xl p-3 ring-1 ring-stone-200">
           <span className="mb-2 block text-xs font-medium text-stone-500">Justificatif (ticket de caisse, facture…)</span>
@@ -293,51 +278,9 @@ export default function ExpenseForm({ settings, expense, onClose }: {
           {fileError && <p className="mt-2 text-sm text-red-600">{fileError}</p>}
         </div>
 
-        <details className="rounded-xl ring-1 ring-stone-200" open={!!(d.kind || d.vat || d.notes)}>
-          <summary className="cursor-pointer px-3 py-2 text-sm font-medium">Plus de détails (facture, TVA, notes)</summary>
-          <div className="grid grid-cols-2 gap-2 px-3 pb-3">
-            <Field label="Type">
-              <select className="input" value={d.kind} onChange={(e) => set({ kind: e.target.value as Draft["kind"] })}>
-                <option value="">—</option>
-                <option value="ticket">Ticket de caisse</option>
-                <option value="facture">Facture</option>
-              </select>
-            </Field>
-            <Field label="TVA €"><input className="input" inputMode="decimal" value={d.vat} onChange={(e) => set({ vat: e.target.value })} /></Field>
-            {d.kind === "facture" && <>
-              <Field label="N° de facture"><input className="input" value={d.invoiceNumber} onChange={(e) => set({ invoiceNumber: e.target.value })} /></Field>
-              <Field label="Échéance"><input type="date" className="input" value={d.dueDate} onChange={(e) => set({ dueDate: e.target.value })} /></Field>
-            </>}
-            <Field label="Notes" className="col-span-2">
-              <textarea className="input" rows={2} value={d.notes} onChange={(e) => set({ notes: e.target.value })} />
-            </Field>
-          </div>
-        </details>
-
-        <details className="rounded-xl ring-1 ring-stone-200" open={mismatch}>
-          <summary className="cursor-pointer px-3 py-2 text-sm font-medium">
-            Détail des articles{d.items.length > 0 && ` (${d.items.length})`}
-            {mismatch && <span className="ml-2 text-red-600">· à vérifier</span>}
-          </summary>
-          <div className="space-y-1 px-3 pb-3">
-            {d.items.map((it, i) => (
-              <div key={i} className="flex gap-1">
-                <input className="input flex-1 py-1 text-sm" placeholder="Article" value={it.label} onChange={(e) => setItem(i, { label: e.target.value })} />
-                <input className="input w-12 py-1 text-sm" inputMode="decimal" placeholder="qté" value={it.quantity} onChange={(e) => setItem(i, { quantity: e.target.value })} />
-                <input className="input w-20 py-1 text-right text-sm" inputMode="decimal" placeholder="€" value={it.amount} onChange={(e) => setItem(i, { amount: e.target.value })} />
-                <button type="button" className="px-1 text-stone-400 hover:text-red-600" aria-label="Retirer"
-                  onClick={() => set({ items: d.items.filter((_, j) => j !== i) })}>×</button>
-              </div>
-            ))}
-            <button type="button" className="text-sm text-teal-700 underline"
-              onClick={() => set({ items: [...d.items, { label: "", quantity: "", amount: "" }] })}>+ Ajouter un article</button>
-            {d.items.length > 0 && (
-              <p className={`text-right text-xs ${mismatch ? "font-semibold text-red-600" : "text-stone-500"}`}>
-                Somme des articles : {euro(itemsSum)}{mismatch && ` (montant ${euro(total)})`}
-              </p>
-            )}
-          </div>
-        </details>
+        <Field label="Notes">
+          <textarea className="input" rows={2} value={d.notes} onChange={(e) => set({ notes: e.target.value })} />
+        </Field>
 
         <button className="btn w-full" disabled={saving || preparing}>{expense ? "Enregistrer" : "Ajouter la dépense"}</button>
       </form>
