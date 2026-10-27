@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { deleteDoc, doc, onSnapshot, setDoc } from "firebase/firestore";
+import { deleteDoc, doc, onSnapshot, setDoc, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useFamily } from "@/lib/family";
 import { useCollection } from "@/lib/useCollection";
@@ -8,6 +8,7 @@ import { fmtMonth, fmtShort, today } from "@/lib/dates";
 import type { BudgetSettings, Expense } from "@/lib/types";
 import Modal from "@/components/Modal";
 import ExpenseForm from "@/components/ExpenseForm";
+import { JOINT, balance } from "@/lib/budget";
 
 const DEFAULT_CATEGORIES = [
   { name: "Courses", monthly: 600 },
@@ -41,8 +42,14 @@ export default function BudgetPage() {
 
   if (!family) return null;
   const parents = family.members.filter((m) => m.role === "parent");
+  const owed = balance(items, parents);
 
-
+  async function settle() {
+    if (!owed || !confirm(`${owed.from.name} a remboursé ${euro(owed.amount)} à ${owed.to.name} ?`)) return;
+    const batch = writeBatch(db);
+    for (const e of owed.open) batch.update(doc(db, "families", family!.id, "expenses", e.id), { settled: true });
+    await batch.commit();
+  }
 
   const shift = (n: number) => {
     const [y, m] = month.split("-").map(Number);
@@ -75,12 +82,26 @@ export default function BudgetPage() {
           <span className="text-sm text-stone-500">Budget {euro(planned)}</span>
         </div>
         <p className={`text-3xl font-bold ${total > planned ? "text-red-600" : "text-teal-800"}`}>{euro(total)}</p>
-        <div className="mt-3 flex gap-4 text-sm">
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 whitespace-nowrap text-sm">
           {parents.map((p) => (
             <span key={p.id}><b style={{ color: p.color }}>{p.name}</b> : {euro(paidBy(p.id))}</span>
           ))}
+          {paidBy(JOINT) > 0 && <span><b>Ensemble</b> : {euro(paidBy(JOINT))}</span>}
         </div>
       </section>
+
+      {owed && owed.open.length > 0 && (
+        <section className="card flex items-center gap-3">
+          <span className="flex-1 text-sm">
+            <span className="block text-stone-500">Comptes entre vous</span>
+            {owed.amount > 0
+              ? <><b style={{ color: owed.from.color }}>{owed.from.name}</b> doit <b>{euro(owed.amount)}</b> à <b style={{ color: owed.to.color }}>{owed.to.name}</b></>
+              : <>Vous êtes quittes.</>}
+            <span className="block text-xs text-stone-400">{owed.open.length} dépense{owed.open.length > 1 ? "s" : ""} partagée{owed.open.length > 1 ? "s" : ""} à régler</span>
+          </span>
+          <button className="btn-ghost text-sm ring-1 ring-stone-200" onClick={settle}>C&apos;est réglé</button>
+        </section>
+      )}
 
       <section className="card space-y-3">
         <div className="flex items-center justify-between">
@@ -121,7 +142,9 @@ export default function BudgetPage() {
                 <span className="flex-1">
                   {e.label}{e.hasScan && <span className="ml-1 text-xs" aria-label="Justificatif joint">📎</span>}
                   <span className="block text-xs text-stone-400">
-                    {e.category} · {e.memberIds?.length ? e.memberIds.map((id) => member(id)?.name).filter(Boolean).join(", ") : "Tout le monde"}
+                    {e.category} · {e.paidBy === JOINT ? "Ensemble" : member(e.paidBy)?.name}
+                    {e.shared && (e.settled ? " · partagé, réglé" : " · partagé")}
+                    {e.memberIds?.length ? ` · pour ${e.memberIds.map((id) => member(id)?.name).filter(Boolean).join(", ")}` : ""}
                   </span>
                 </span>
                 <b>{euro(e.amount)}</b>

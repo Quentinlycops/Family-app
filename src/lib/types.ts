@@ -76,7 +76,9 @@ export type Expense = {
   amount: number;
   category: string;
   date: string;
-  paidBy: string; // id membre
+  paidBy: string; // id membre, ou « ensemble » (payé à deux, compte commun)
+  shared?: boolean; // payé par un parent, à partager moitié-moitié avec l'autre
+  settled?: boolean; // partage réglé entre les parents
   memberIds?: string[]; // personnes concernées, absent = tout le monde
   time?: string; // HH:mm
   store?: string;

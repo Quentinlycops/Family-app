@@ -6,6 +6,7 @@ import { useFamily } from "@/lib/family";
 import { familyCol } from "@/lib/useCollection";
 import { today } from "@/lib/dates";
 import { dataUrlToObjectUrl, prepareFile } from "@/lib/files";
+import { JOINT } from "@/lib/budget";
 import type { BudgetSettings, Expense, ExpenseItem } from "@/lib/types";
 import Modal from "@/components/Modal";
 import MemberPicker from "@/components/MemberPicker";
@@ -23,6 +24,7 @@ type Draft = {
   category: string;
   memberIds: string[];
   paidBy: string;
+  shared: boolean;
   kind: "" | "ticket" | "facture";
   paymentMethod: string;
   invoiceNumber: string;
@@ -55,6 +57,7 @@ export default function ExpenseForm({ settings, expense, onClose }: {
     category: expense.category,
     memberIds: expense.memberIds ?? [],
     paidBy: expense.paidBy,
+    shared: !!expense.shared,
     kind: expense.kind ?? "",
     paymentMethod: expense.paymentMethod ?? "",
     invoiceNumber: expense.invoiceNumber ?? "",
@@ -67,6 +70,7 @@ export default function ExpenseForm({ settings, expense, onClose }: {
     category: settings.categories[0]?.name ?? "Autre",
     memberIds: [],
     paidBy: me?.role === "parent" ? me.id : parents[0]?.id ?? "",
+    shared: false,
     kind: "", paymentMethod: "", invoiceNumber: "", dueDate: "", vat: "", notes: "", items: [],
   });
   const [newCat, setNewCat] = useState("");
@@ -139,6 +143,7 @@ export default function ExpenseForm({ settings, expense, onClose }: {
       .map((i) => ({ label: i.label.trim(), amount: num(i.amount), ...(i.quantity && !isNaN(num(i.quantity)) && { quantity: num(i.quantity) }) }));
     const opt = <T,>(v: T) =>
       v === "" || (Array.isArray(v) && !v.length) || (typeof v === "number" && isNaN(v)) ? undefined : v;
+    const shared = d.shared && d.paidBy !== JOINT;
     const fields: Record<string, unknown> = {
       store: opt(d.store.trim()),
       time: opt(d.time),
@@ -150,6 +155,9 @@ export default function ExpenseForm({ settings, expense, onClose }: {
       invoiceNumber: d.kind === "facture" ? opt(d.invoiceNumber.trim()) : undefined,
       dueDate: d.kind === "facture" ? opt(d.dueDate) : undefined,
       notes: opt(d.notes.trim()),
+      shared: shared || undefined,
+      // Modifier une dépense partagée la remet dans les comptes à régler.
+      settled: shared && expense?.settled && expense.amount === total && expense.paidBy === d.paidBy ? true : undefined,
       hasScan: file ? true : undefined,
       fileName: file?.name,
       fileType: file?.type || undefined,
@@ -179,6 +187,7 @@ export default function ExpenseForm({ settings, expense, onClose }: {
     onClose();
   }
 
+  const other = parents.find((p) => p.id !== d.paidBy);
   const isImage = file?.type.startsWith("image/");
 
   return (
@@ -224,13 +233,33 @@ export default function ExpenseForm({ settings, expense, onClose }: {
           </div>
         </div>
 
+        <div>
+          <span className="mb-1 block text-xs font-medium text-stone-500">Qui a payé ?</span>
+          <div className="flex flex-wrap gap-2">
+            {[...parents.map((p) => ({ id: p.id, name: p.name, color: p.color })), { id: JOINT, name: "Ensemble", color: "#44403c" }].map((p) => {
+              const on = d.paidBy === p.id;
+              return (
+                <button key={p.id} type="button" onClick={() => set({ paidBy: p.id })}
+                  className="rounded-full border-2 px-3 py-1 text-sm font-medium"
+                  style={{ borderColor: p.color, background: on ? p.color : "transparent", color: on ? "white" : p.color }}>
+                  {p.name}
+                </button>
+              );
+            })}
+          </div>
+          {d.paidBy !== JOINT && other && (
+            <label className="mt-2 flex items-center gap-2 text-sm">
+              <input type="checkbox" className="h-4 w-4 accent-teal-700" checked={d.shared} onChange={(e) => set({ shared: e.target.checked })} />
+              <span>
+                Partager avec {other.name}
+                {d.shared && total > 0 && <span className="text-stone-500"> : {other.name} doit {euro(total / 2)}</span>}
+              </span>
+            </label>
+          )}
+        </div>
+
         <div className="grid grid-cols-2 gap-2">
-          <Field label="Payé par">
-            <select className="input" value={d.paidBy} onChange={(e) => set({ paidBy: e.target.value })}>
-              {parents.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-          </Field>
-          <Field label="Moyen de paiement">
+          <Field label="Moyen de paiement" className="col-span-2">
             <select className="input" value={d.paymentMethod} onChange={(e) => set({ paymentMethod: e.target.value })}>
               <option value="">—</option>
               {[...PAYMENTS, ...(d.paymentMethod && !PAYMENTS.includes(d.paymentMethod) ? [d.paymentMethod] : [])]
