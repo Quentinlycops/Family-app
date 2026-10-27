@@ -102,10 +102,14 @@ export default function AccueilPage() {
             const named = rel === "Aujourd'hui" || rel === "Demain";
             return (
               <div key={date} className="space-y-1.5">
-                <p className="text-sm font-semibold first-letter:uppercase">
-                  <span className={date === now ? "text-teal-700" : ""}>{named ? rel : fmtLong(date)}</span>
-                  {named && <span className="font-normal text-stone-400"> · {fmtLong(date)}</span>}
-                </p>
+                <div className="flex items-center gap-3 pt-1">
+                  <span className="h-px flex-1 bg-stone-300" />
+                  <p className="text-center text-sm font-semibold">
+                    <span className={`inline-block first-letter:uppercase ${date === now ? "text-teal-700" : ""}`}>{named ? rel : fmtLong(date)}</span>
+                    {named && <span className="block text-xs font-normal text-stone-400 first-letter:uppercase">{fmtLong(date)}</span>}
+                  </p>
+                  <span className="h-px flex-1 bg-stone-300" />
+                </div>
                 {list.map(({ ev }) => {
                   const details = [
                     ev.memberIds.map((id) => member(id)?.name).filter(Boolean).join(", "),
