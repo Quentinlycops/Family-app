@@ -76,7 +76,9 @@ export type Expense = {
   amount: number;
   category: string;
   date: string;
-  paidBy: string; // id membre
+  paidBy: string; // id membre, ou « ensemble » (payé à deux, compte commun)
+  shared?: boolean; // payé par un parent, à partager moitié-moitié avec l'autre
+  settled?: boolean; // partage réglé entre les parents
   memberIds?: string[]; // personnes concernées, absent = tout le monde
   time?: string; // HH:mm
   store?: string;
@@ -87,31 +89,12 @@ export type Expense = {
   invoiceNumber?: string;
   dueDate?: string;
   notes?: string;
-  hasScan?: boolean; // image conservée dans receipts/{id}
+  hasScan?: boolean; // justificatif joint, rangé dans receipts/{id}
+  fileName?: string;
+  fileType?: string;
 };
 
 export type ExpenseItem = { label: string; quantity?: number; amount: number };
-
-/** Ce que la lecture automatique renvoie (voir /api/scan). */
-export type ScanResult = {
-  kind: "ticket" | "facture" | "autre";
-  store: string | null;
-  address: string | null;
-  date: string | null;
-  time: string | null;
-  total: number | null;
-  subtotal: number | null;
-  vat: number | null;
-  discount: number | null;
-  currency: string;
-  paymentMethod: string | null;
-  invoiceNumber: string | null;
-  dueDate: string | null;
-  period: string | null;
-  items: { label: string; quantity: number | null; amount: number }[];
-  suggestedCategory: string | null;
-  notes: string | null;
-};
 
 export type BudgetSettings = {
   categories: { name: string; monthly: number }[];

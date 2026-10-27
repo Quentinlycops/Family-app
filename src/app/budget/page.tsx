@@ -1,13 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
-import { addDoc, deleteDoc, doc, onSnapshot, setDoc } from "firebase/firestore";
+import { deleteDoc, doc, onSnapshot, setDoc, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useFamily } from "@/lib/family";
-import { familyCol, useCollection } from "@/lib/useCollection";
+import { useCollection } from "@/lib/useCollection";
 import { fmtMonth, fmtShort, today } from "@/lib/dates";
 import type { BudgetSettings, Expense } from "@/lib/types";
 import Modal from "@/components/Modal";
-import { EditExpense, ScanButtons } from "@/components/ExpenseReview";
+import ExpenseForm from "@/components/ExpenseForm";
+import { JOINT, balance } from "@/lib/budget";
 
 const DEFAULT_CATEGORIES = [
   { name: "Courses", monthly: 600 },
@@ -23,12 +24,13 @@ const euro = (n: number) =>
   n.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
 
 export default function BudgetPage() {
-  const { family, me, member } = useFamily();
+  const { family, member } = useFamily();
   const { items } = useCollection<Expense>("expenses");
   const [month, setMonth] = useState(today().slice(0, 7));
   const [settings, setSettings] = useState<BudgetSettings>({ categories: DEFAULT_CATEGORIES });
   const [editingBudget, setEditingBudget] = useState(false);
-  const [editing, setEditing] = useState<Expense>();
+  const [editing, setEditing] = useState<Expense | "new">();
+  const [showBalance, setShowBalance] = useState(false);
   const [catFilter, setCatFilter] = useState<string>();
   const fid = family?.id;
 
@@ -39,22 +41,16 @@ export default function BudgetPage() {
     });
   }, [fid]);
 
-  const [form, setForm] = useState({ label: "", amount: "", category: "Courses", date: today(), paidBy: "" });
   if (!family) return null;
   const parents = family.members.filter((m) => m.role === "parent");
+  const owed = balance(items, parents);
 
-  async function add(e: React.FormEvent) {
-    e.preventDefault();
-    const amount = parseFloat(form.amount.replace(",", "."));
-    if (!amount) return;
-    await addDoc(familyCol(family!.id, "expenses"), {
-      label: form.label.trim() || form.category,
-      amount,
-      category: form.category,
-      date: form.date,
-      paidBy: form.paidBy || me?.id || parents[0].id,
-    });
-    setForm({ ...form, label: "", amount: "" });
+  async function settle() {
+    if (!owed || !confirm(`${owed.from.name} a remboursé ${euro(owed.amount)} à ${owed.to.name} ?`)) return false;
+    const batch = writeBatch(db);
+    for (const e of owed.open) batch.update(doc(db, "families", family!.id, "expenses", e.id), { settled: true });
+    await batch.commit();
+    return true;
   }
 
   const shift = (n: number) => {
@@ -78,34 +74,36 @@ export default function BudgetPage() {
         <button className="btn-ghost" onClick={() => shift(1)}>›</button>
       </div>
 
+      <button className="btn w-full py-3 text-base" onClick={() => setEditing("new")}>
+        ＋ Ajouter une dépense
+      </button>
+
       <section className="card">
         <div className="flex items-baseline justify-between">
           <span className="text-sm text-stone-500">Dépensé</span>
           <span className="text-sm text-stone-500">Budget {euro(planned)}</span>
         </div>
         <p className={`text-3xl font-bold ${total > planned ? "text-red-600" : "text-teal-800"}`}>{euro(total)}</p>
-        <div className="mt-3 flex gap-4 text-sm">
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 whitespace-nowrap text-sm">
           {parents.map((p) => (
             <span key={p.id}><b style={{ color: p.color }}>{p.name}</b> : {euro(paidBy(p.id))}</span>
           ))}
+          {paidBy(JOINT) > 0 && <span><b>Ensemble</b> : {euro(paidBy(JOINT))}</span>}
         </div>
       </section>
 
-      <form onSubmit={add} className="card grid grid-cols-2 gap-2">
-        <div className="col-span-2 mb-1"><ScanButtons settings={settings} /></div>
-        <input className="input col-span-2" placeholder="Libellé (ex. Carrefour)" value={form.label}
-          onChange={(e) => setForm({ ...form, label: e.target.value })} />
-        <input className="input" inputMode="decimal" placeholder="Montant €" value={form.amount}
-          onChange={(e) => setForm({ ...form, amount: e.target.value })} required />
-        <select className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-          {settings.categories.map((c) => <option key={c.name}>{c.name}</option>)}
-        </select>
-        <input type="date" className="input" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
-        <select className="input" value={form.paidBy || me?.id} onChange={(e) => setForm({ ...form, paidBy: e.target.value })}>
-          {parents.map((p) => <option key={p.id} value={p.id}>{p.name} a payé</option>)}
-        </select>
-        <button className="btn col-span-2">Ajouter la dépense</button>
-      </form>
+      {owed && owed.open.length > 0 && (
+        <section className="card flex items-center gap-3">
+          <button type="button" className="flex-1 text-left text-sm" onClick={() => setShowBalance(true)}>
+            <span className="block text-stone-500">Comptes entre vous</span>
+            {owed.amount > 0
+              ? <><b style={{ color: owed.from.color }}>{owed.from.name}</b> doit <b className="underline decoration-dotted">{euro(owed.amount)}</b> à <b style={{ color: owed.to.color }}>{owed.to.name}</b></>
+              : <>Vous êtes quittes.</>}
+            <span className="block text-xs text-teal-700">Voir le détail des {owed.open.length} dépense{owed.open.length > 1 ? "s" : ""} partagée{owed.open.length > 1 ? "s" : ""} ›</span>
+          </button>
+          <button className="btn-ghost text-sm ring-1 ring-stone-200" onClick={settle}>C&apos;est réglé</button>
+        </section>
+      )}
 
       <section className="card space-y-3">
         <div className="flex items-center justify-between">
@@ -144,9 +142,11 @@ export default function BudgetPage() {
               <button className="flex flex-1 items-center gap-3 text-left" onClick={() => setEditing(e)}>
                 <span className="w-20 text-stone-500">{fmtShort(e.date)}</span>
                 <span className="flex-1">
-                  {e.label}{e.hasScan && <span className="ml-1 text-xs" aria-label="Document joint">📎</span>}
+                  {e.label}{e.hasScan && <span className="ml-1 text-xs" aria-label="Justificatif joint">📎</span>}
                   <span className="block text-xs text-stone-400">
-                    {e.category} · {e.memberIds?.length ? e.memberIds.map((id) => member(id)?.name).filter(Boolean).join(", ") : "Tout le monde"}
+                    {e.category} · {e.paidBy === JOINT ? "Ensemble" : member(e.paidBy)?.name}
+                    {e.shared && (e.settled ? " · partagé, réglé" : " · partagé")}
+                    {e.memberIds?.length ? ` · pour ${e.memberIds.map((id) => member(id)?.name).filter(Boolean).join(", ")}` : ""}
                   </span>
                 </span>
                 <b>{euro(e.amount)}</b>
@@ -162,7 +162,47 @@ export default function BudgetPage() {
         </ul>
       </section>
 
-      {editing && <EditExpense expense={editing} settings={settings} onClose={() => setEditing(undefined)} />}
+      {showBalance && owed && (
+        <Modal title="Détail des comptes" onClose={() => setShowBalance(false)}>
+          <p className="mb-3 text-sm text-stone-500">Chaque dépense partagée est divisée en deux : l&apos;autre parent doit la moitié à celui qui a payé.</p>
+          <ul className="divide-y divide-stone-100 text-sm">
+            {[...owed.open].sort((a, b) => b.date.localeCompare(a.date)).map((e) => {
+              const payer = member(e.paidBy);
+              const debtor = parents.find((p) => p.id !== e.paidBy);
+              return (
+                <li key={e.id} className="flex items-center gap-3 py-2">
+                  <span className="w-20 shrink-0 text-stone-500">{fmtShort(e.date)}</span>
+                  <span className="flex-1">
+                    {e.label}
+                    <span className="block text-xs text-stone-400">
+                      {euro(e.amount)} payés par <b style={{ color: payer?.color }}>{payer?.name}</b>
+                    </span>
+                  </span>
+                  <span className="text-right text-xs">
+                    <span style={{ color: debtor?.color }}>{debtor?.name}</span> doit
+                    <b className="block text-sm">{euro(e.amount / 2)}</b>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="mt-3 space-y-1 border-t border-stone-200 pt-3 text-sm">
+            {parents.map((p) => {
+              const due = owed.open.filter((e) => e.paidBy !== p.id).reduce((s, e) => s + e.amount / 2, 0);
+              return <p key={p.id} className="flex justify-between"><span><b style={{ color: p.color }}>{p.name}</b> doit en tout</span><span>{euro(due)}</span></p>;
+            })}
+            <p className="flex justify-between font-semibold">
+              <span>Solde</span>
+              <span>{owed.amount > 0 ? `${owed.from.name} doit ${euro(owed.amount)} à ${owed.to.name}` : "Quittes"}</span>
+            </p>
+          </div>
+          <button className="btn mt-4 w-full" onClick={async () => { if (await settle()) setShowBalance(false); }}>C&apos;est réglé</button>
+        </Modal>
+      )}
+
+      {editing && (
+        <ExpenseForm expense={editing === "new" ? undefined : editing} settings={settings} onClose={() => setEditing(undefined)} />
+      )}
 
       {editingBudget && (
         <BudgetEditor settings={settings} onClose={() => setEditingBudget(false)}
