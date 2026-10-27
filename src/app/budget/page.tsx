@@ -1,13 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
-import { addDoc, deleteDoc, doc, onSnapshot, setDoc } from "firebase/firestore";
+import { deleteDoc, doc, onSnapshot, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useFamily } from "@/lib/family";
-import { familyCol, useCollection } from "@/lib/useCollection";
+import { useCollection } from "@/lib/useCollection";
 import { fmtMonth, fmtShort, today } from "@/lib/dates";
 import type { BudgetSettings, Expense } from "@/lib/types";
 import Modal from "@/components/Modal";
-import { EditExpense, ScanButtons } from "@/components/ExpenseReview";
+import ExpenseForm from "@/components/ExpenseForm";
 
 const DEFAULT_CATEGORIES = [
   { name: "Courses", monthly: 600 },
@@ -23,12 +23,12 @@ const euro = (n: number) =>
   n.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
 
 export default function BudgetPage() {
-  const { family, me, member } = useFamily();
+  const { family, member } = useFamily();
   const { items } = useCollection<Expense>("expenses");
   const [month, setMonth] = useState(today().slice(0, 7));
   const [settings, setSettings] = useState<BudgetSettings>({ categories: DEFAULT_CATEGORIES });
   const [editingBudget, setEditingBudget] = useState(false);
-  const [editing, setEditing] = useState<Expense>();
+  const [editing, setEditing] = useState<Expense | "new">();
   const [catFilter, setCatFilter] = useState<string>();
   const fid = family?.id;
 
@@ -39,23 +39,10 @@ export default function BudgetPage() {
     });
   }, [fid]);
 
-  const [form, setForm] = useState({ label: "", amount: "", category: "Courses", date: today(), paidBy: "" });
   if (!family) return null;
   const parents = family.members.filter((m) => m.role === "parent");
 
-  async function add(e: React.FormEvent) {
-    e.preventDefault();
-    const amount = parseFloat(form.amount.replace(",", "."));
-    if (!amount) return;
-    await addDoc(familyCol(family!.id, "expenses"), {
-      label: form.label.trim() || form.category,
-      amount,
-      category: form.category,
-      date: form.date,
-      paidBy: form.paidBy || me?.id || parents[0].id,
-    });
-    setForm({ ...form, label: "", amount: "" });
-  }
+
 
   const shift = (n: number) => {
     const [y, m] = month.split("-").map(Number);
@@ -78,10 +65,9 @@ export default function BudgetPage() {
         <button className="btn-ghost" onClick={() => shift(1)}>›</button>
       </div>
 
-      <section className="card space-y-2">
-        <h2 className="font-semibold">Ajouter un ticket ou une facture</h2>
-        <ScanButtons settings={settings} />
-      </section>
+      <button className="btn w-full py-3 text-base" onClick={() => setEditing("new")}>
+        ＋ Ajouter une dépense
+      </button>
 
       <section className="card">
         <div className="flex items-baseline justify-between">
@@ -95,22 +81,6 @@ export default function BudgetPage() {
           ))}
         </div>
       </section>
-
-      <form onSubmit={add} className="card grid grid-cols-2 gap-2">
-        <h2 className="col-span-2 font-semibold">Saisie manuelle</h2>
-        <input className="input col-span-2" placeholder="Libellé (ex. Carrefour)" value={form.label}
-          onChange={(e) => setForm({ ...form, label: e.target.value })} />
-        <input className="input" inputMode="decimal" placeholder="Montant €" value={form.amount}
-          onChange={(e) => setForm({ ...form, amount: e.target.value })} required />
-        <select className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-          {settings.categories.map((c) => <option key={c.name}>{c.name}</option>)}
-        </select>
-        <input type="date" className="input" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
-        <select className="input" value={form.paidBy || me?.id} onChange={(e) => setForm({ ...form, paidBy: e.target.value })}>
-          {parents.map((p) => <option key={p.id} value={p.id}>{p.name} a payé</option>)}
-        </select>
-        <button className="btn col-span-2">Ajouter la dépense</button>
-      </form>
 
       <section className="card space-y-3">
         <div className="flex items-center justify-between">
@@ -149,7 +119,7 @@ export default function BudgetPage() {
               <button className="flex flex-1 items-center gap-3 text-left" onClick={() => setEditing(e)}>
                 <span className="w-20 text-stone-500">{fmtShort(e.date)}</span>
                 <span className="flex-1">
-                  {e.label}{e.hasScan && <span className="ml-1 text-xs" aria-label="Document joint">📎</span>}
+                  {e.label}{e.hasScan && <span className="ml-1 text-xs" aria-label="Justificatif joint">📎</span>}
                   <span className="block text-xs text-stone-400">
                     {e.category} · {e.memberIds?.length ? e.memberIds.map((id) => member(id)?.name).filter(Boolean).join(", ") : "Tout le monde"}
                   </span>
@@ -167,7 +137,9 @@ export default function BudgetPage() {
         </ul>
       </section>
 
-      {editing && <EditExpense expense={editing} settings={settings} onClose={() => setEditing(undefined)} />}
+      {editing && (
+        <ExpenseForm expense={editing === "new" ? undefined : editing} settings={settings} onClose={() => setEditing(undefined)} />
+      )}
 
       {editingBudget && (
         <BudgetEditor settings={settings} onClose={() => setEditingBudget(false)}
