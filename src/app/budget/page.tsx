@@ -30,6 +30,7 @@ export default function BudgetPage() {
   const [settings, setSettings] = useState<BudgetSettings>({ categories: DEFAULT_CATEGORIES });
   const [editingBudget, setEditingBudget] = useState(false);
   const [editing, setEditing] = useState<Expense | "new">();
+  const [showBalance, setShowBalance] = useState(false);
   const [catFilter, setCatFilter] = useState<string>();
   const fid = family?.id;
 
@@ -45,10 +46,11 @@ export default function BudgetPage() {
   const owed = balance(items, parents);
 
   async function settle() {
-    if (!owed || !confirm(`${owed.from.name} a remboursé ${euro(owed.amount)} à ${owed.to.name} ?`)) return;
+    if (!owed || !confirm(`${owed.from.name} a remboursé ${euro(owed.amount)} à ${owed.to.name} ?`)) return false;
     const batch = writeBatch(db);
     for (const e of owed.open) batch.update(doc(db, "families", family!.id, "expenses", e.id), { settled: true });
     await batch.commit();
+    return true;
   }
 
   const shift = (n: number) => {
@@ -92,13 +94,13 @@ export default function BudgetPage() {
 
       {owed && owed.open.length > 0 && (
         <section className="card flex items-center gap-3">
-          <span className="flex-1 text-sm">
+          <button type="button" className="flex-1 text-left text-sm" onClick={() => setShowBalance(true)}>
             <span className="block text-stone-500">Comptes entre vous</span>
             {owed.amount > 0
-              ? <><b style={{ color: owed.from.color }}>{owed.from.name}</b> doit <b>{euro(owed.amount)}</b> à <b style={{ color: owed.to.color }}>{owed.to.name}</b></>
+              ? <><b style={{ color: owed.from.color }}>{owed.from.name}</b> doit <b className="underline decoration-dotted">{euro(owed.amount)}</b> à <b style={{ color: owed.to.color }}>{owed.to.name}</b></>
               : <>Vous êtes quittes.</>}
-            <span className="block text-xs text-stone-400">{owed.open.length} dépense{owed.open.length > 1 ? "s" : ""} partagée{owed.open.length > 1 ? "s" : ""} à régler</span>
-          </span>
+            <span className="block text-xs text-teal-700">Voir le détail des {owed.open.length} dépense{owed.open.length > 1 ? "s" : ""} partagée{owed.open.length > 1 ? "s" : ""} ›</span>
+          </button>
           <button className="btn-ghost text-sm ring-1 ring-stone-200" onClick={settle}>C&apos;est réglé</button>
         </section>
       )}
@@ -159,6 +161,44 @@ export default function BudgetPage() {
           ))}
         </ul>
       </section>
+
+      {showBalance && owed && (
+        <Modal title="Détail des comptes" onClose={() => setShowBalance(false)}>
+          <p className="mb-3 text-sm text-stone-500">Chaque dépense partagée est divisée en deux : l&apos;autre parent doit la moitié à celui qui a payé.</p>
+          <ul className="divide-y divide-stone-100 text-sm">
+            {[...owed.open].sort((a, b) => b.date.localeCompare(a.date)).map((e) => {
+              const payer = member(e.paidBy);
+              const debtor = parents.find((p) => p.id !== e.paidBy);
+              return (
+                <li key={e.id} className="flex items-center gap-3 py-2">
+                  <span className="w-20 shrink-0 text-stone-500">{fmtShort(e.date)}</span>
+                  <span className="flex-1">
+                    {e.label}
+                    <span className="block text-xs text-stone-400">
+                      {euro(e.amount)} payés par <b style={{ color: payer?.color }}>{payer?.name}</b>
+                    </span>
+                  </span>
+                  <span className="text-right text-xs">
+                    <span style={{ color: debtor?.color }}>{debtor?.name}</span> doit
+                    <b className="block text-sm">{euro(e.amount / 2)}</b>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="mt-3 space-y-1 border-t border-stone-200 pt-3 text-sm">
+            {parents.map((p) => {
+              const due = owed.open.filter((e) => e.paidBy !== p.id).reduce((s, e) => s + e.amount / 2, 0);
+              return <p key={p.id} className="flex justify-between"><span><b style={{ color: p.color }}>{p.name}</b> doit en tout</span><span>{euro(due)}</span></p>;
+            })}
+            <p className="flex justify-between font-semibold">
+              <span>Solde</span>
+              <span>{owed.amount > 0 ? `${owed.from.name} doit ${euro(owed.amount)} à ${owed.to.name}` : "Quittes"}</span>
+            </p>
+          </div>
+          <button className="btn mt-4 w-full" onClick={async () => { if (await settle()) setShowBalance(false); }}>C&apos;est réglé</button>
+        </Modal>
+      )}
 
       {editing && (
         <ExpenseForm expense={editing === "new" ? undefined : editing} settings={settings} onClose={() => setEditing(undefined)} />
