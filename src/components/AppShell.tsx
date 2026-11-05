@@ -12,7 +12,6 @@ const TABS = [
   { href: "/todo", label: "To-do", icon: "✅" },
   { href: "/courses", label: "Courses", icon: "🛒" },
   { href: "/repas", label: "Repas", icon: "🍽️" },
-  { href: "/budget", label: "Budget", icon: "💶" },
 ];
 
 export default function AppShell({ children }: { children: ReactNode }) {
@@ -52,7 +51,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       </header>
       <main className="flex-1 px-3 pb-28 pt-4 sm:px-4 lg:px-6">{children}</main>
       <nav className="fixed inset-x-0 bottom-0 z-10 border-t border-stone-200 bg-surface pb-[env(safe-area-inset-bottom)]">
-        <div className="mx-auto grid max-w-3xl grid-cols-6">
+        <div className="mx-auto grid max-w-3xl grid-cols-5">
           {TABS.map((t) => {
             const active = path.startsWith(t.href);
             return (
