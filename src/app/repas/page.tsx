@@ -23,6 +23,8 @@ export default function RepasPage() {
   const [editing, setEditing] = useState<Recipe | "new" | null>(null);
   const [message, setMessage] = useState("");
   const [recipeQuery, setRecipeQuery] = useState("");
+  // Message affiché sous un créneau après un appui sur le dé (clé `${date}_${slot}`).
+  const [diceHint, setDiceHint] = useState<{ key: string; text: string; empty?: boolean } | null>(null);
   if (!family) return null;
 
   const days = Array.from({ length: 7 }, (_, i) => toISO(addDays(fromISO(week), i)));
@@ -44,18 +46,39 @@ export default function RepasPage() {
     }, { merge: true });
   }
 
-  function randomIdea(date: string, slot: "midi" | "soir") {
-    if (!recipes.length) return;
+  function showDiceHint(key: string, text: string, empty = false) {
+    setDiceHint({ key, text, empty });
+    setTimeout(() => setDiceHint((h) => (h?.key === key && h.text === text ? null : h)), empty ? 6000 : 3000);
+  }
+
+  async function randomIdea(date: string, slot: "midi" | "soir") {
+    const key = `${date}_${slot}`;
+    if (!recipes.length) {
+      showDiceHint(key, "Le dé tire au sort parmi vos recettes, mais aucune n'est encore enregistrée.", true);
+      return;
+    }
+    // On évite de retomber sur le plat déjà prévu, sinon l'appui semble ne rien faire.
+    const current = slotOf(date, slot)?.recipeId;
+    const pool = recipes.length > 1 ? recipes.filter((r) => r.id !== current) : recipes;
+    if (pool.length === 1 && pool[0].id === current) {
+      showDiceHint(key, "Une seule recette enregistrée : ajoutez-en d'autres pour varier le tirage.", true);
+      return;
+    }
     // Tirage pondéré : plus un plat n'a pas été mangé depuis longtemps, plus il a de chances de sortir.
     const lastEaten = (id: string) =>
       plan.filter((p) => p.recipeId === id && p.date < date).map((p) => p.date).sort().pop();
-    const weights = recipes.map((r) => {
+    const weights = pool.map((r) => {
       const last = lastEaten(r.id);
       return last ? Math.min(60, (fromISO(date).getTime() - fromISO(last).getTime()) / 86400000) + 1 : 60;
     });
     let pick = Math.random() * weights.reduce((a, b) => a + b, 0);
-    const r = recipes.find((_, i) => (pick -= weights[i]) < 0) ?? recipes[0];
-    setSlot(date, slot, `r:${r.id}`);
+    const r = pool.find((_, i) => (pick -= weights[i]) < 0) ?? pool[0];
+    try {
+      await setSlot(date, slot, `r:${r.id}`);
+      showDiceHint(key, `🎲 ${r.name}`);
+    } catch {
+      showDiceHint(key, "Impossible d'enregistrer le tirage. Vérifiez la connexion et réessayez.");
+    }
   }
 
   async function weekToShopping() {
@@ -97,8 +120,10 @@ export default function RepasPage() {
               {SLOTS.map((s) => {
                 const cur = slotOf(d, s);
                 const value = cur?.recipeId ? `r:${cur.recipeId}` : cur?.text ?? "";
+                const hint = diceHint?.key === `${d}_${s}` ? diceHint : null;
                 return (
-                  <div key={s} className="mb-2 flex items-center gap-2">
+                  <div key={s} className="mb-2">
+                  <div className="flex items-center gap-2">
                     <span className="w-10 text-xs uppercase text-stone-400">{s}</span>
                     <input list="recettes" className="input py-1.5"
                       placeholder="Choisir ou écrire…"
@@ -111,6 +136,17 @@ export default function RepasPage() {
                         if (next !== value) setSlot(d, s, next);
                       }} />
                     <button className="btn-ghost px-2" title="Idée au hasard" onClick={() => randomIdea(d, s)}>🎲</button>
+                  </div>
+                  {hint && (
+                    <p className="ml-12 mt-1 text-xs text-teal-700">
+                      {hint.text}
+                      {hint.empty && (
+                        <button className="ml-1 font-medium underline" onClick={() => { setDiceHint(null); setTab("recettes"); }}>
+                          Ajouter une recette
+                        </button>
+                      )}
+                    </p>
+                  )}
                   </div>
                 );
               })}
