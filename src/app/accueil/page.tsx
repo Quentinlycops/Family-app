@@ -1,15 +1,12 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { doc, onSnapshot, updateDoc } from "firebase/firestore";
+import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useFamily } from "@/lib/family";
 import { useCollection } from "@/lib/useCollection";
 import { useEvents } from "@/lib/useEvents";
 import { ageLabel, fmtLong, fmtShort, nextBirthday, relativeDay, today, upcoming } from "@/lib/dates";
-import type { BudgetSettings, Expense, MealSlot, Recipe, ShoppingItem, Todo, Trip } from "@/lib/types";
-
-const euro = (n: number) => n.toLocaleString("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
+import type { MealSlot, Recipe, ShoppingItem, Todo, Trip } from "@/lib/types";
 
 function greeting() {
   const h = new Date().getHours();
@@ -35,17 +32,7 @@ export default function AccueilPage() {
   const { items: shopping } = useCollection<ShoppingItem>("shopping");
   const { items: meals } = useCollection<MealSlot>("meals");
   const { items: recipes } = useCollection<Recipe>("recipes");
-  const { items: expenses } = useCollection<Expense>("expenses");
   const { items: trips } = useCollection<Trip>("trips");
-  const [budget, setBudget] = useState<BudgetSettings>();
-  const fid = family?.id;
-
-  useEffect(() => {
-    if (!fid) return;
-    return onSnapshot(doc(db, "families", fid, "settings", "budget"), (s) =>
-      setBudget(s.exists() ? (s.data() as BudgetSettings) : undefined),
-    );
-  }, [fid]);
 
   if (!family) return null;
   const now = today();
@@ -81,9 +68,6 @@ export default function AccueilPage() {
   const toShow = (urgent.length ? urgent : openTodos).slice(0, 5);
 
   const toBuy = shopping.filter((s) => !s.checked);
-  const month = now.slice(0, 7);
-  const spent = expenses.filter((e) => e.date.startsWith(month)).reduce((s, e) => s + e.amount, 0);
-  const planned = (budget?.categories ?? []).reduce((s, c) => s + c.monthly, 0) || 1500;
   const kids = family.members.filter((m) => m.role === "enfant");
   const nextTrip = trips.filter((t) => t.endDate >= now).sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
 
@@ -169,17 +153,6 @@ export default function AccueilPage() {
           ))}
         </ul>
       </Section>
-
-      <Link href="/budget" className="card block">
-        <div className="flex items-baseline justify-between">
-          <h2 className="font-semibold">💶 Budget du mois</h2>
-          <span className="text-sm text-stone-500">{euro(spent)} / {euro(planned)}</span>
-        </div>
-        <div className="mt-2 h-2 rounded-full bg-stone-100">
-          <div className={`h-2 rounded-full ${spent > planned ? "bg-red-500" : "bg-teal-600"}`}
-            style={{ width: `${Math.min(100, (spent / planned) * 100)}%` }} />
-        </div>
-      </Link>
 
       <Link href={nextTrip ? `/voyages#${nextTrip.id}` : "/voyages"} className="card flex items-center gap-3">
         <span className="text-2xl">🧳</span>

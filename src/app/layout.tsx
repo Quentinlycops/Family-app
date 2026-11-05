@@ -5,7 +5,7 @@ import AppShell from "@/components/AppShell";
 
 export const metadata: Metadata = {
   title: "Famille",
-  description: "Agenda, courses, repas, to-do et budget de la famille",
+  description: "Agenda, courses, repas, to-do et voyages de la famille",
   appleWebApp: { capable: true, title: "Famille", statusBarStyle: "default" },
 };
 
