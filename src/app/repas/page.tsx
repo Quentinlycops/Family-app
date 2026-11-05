@@ -24,7 +24,7 @@ export default function RepasPage() {
   const [message, setMessage] = useState("");
   const [recipeQuery, setRecipeQuery] = useState("");
   // Message affiché sous un créneau après un appui sur le dé (clé `${date}_${slot}`).
-  const [diceHint, setDiceHint] = useState<{ key: string; text: string; empty?: boolean } | null>(null);
+  const [diceHint, setDiceHint] = useState<{ key: string; text: string } | null>(null);
   if (!family) return null;
 
   const days = Array.from({ length: 7 }, (_, i) => toISO(addDays(fromISO(week), i)));
@@ -46,36 +46,45 @@ export default function RepasPage() {
     }, { merge: true });
   }
 
-  function showDiceHint(key: string, text: string, empty = false) {
-    setDiceHint({ key, text, empty });
-    setTimeout(() => setDiceHint((h) => (h?.key === key && h.text === text ? null : h)), empty ? 6000 : 3000);
+  function showDiceHint(key: string, text: string) {
+    setDiceHint({ key, text });
+    setTimeout(() => setDiceHint((h) => (h?.key === key && h.text === text ? null : h)), 4000);
   }
 
   async function randomIdea(date: string, slot: "midi" | "soir") {
     const key = `${date}_${slot}`;
-    if (!recipes.length) {
-      showDiceHint(key, "Le dé tire au sort parmi vos recettes, mais aucune n'est encore enregistrée.", true);
-      return;
+    // Tirage parmi les repas déjà encodés dans le planning (recettes ou texte libre), sans doublon.
+    const keyOf = (p: MealSlot) => (p.recipeId ? `r:${p.recipeId}` : normalize(p.text?.trim() ?? ""));
+    const meals = new Map<string, { value: string; label: string; last?: string }>();
+    for (const p of plan) {
+      if (p.id === key) continue;
+      const k = keyOf(p);
+      const label = p.recipeId ? recipe(p.recipeId)?.name : p.text?.trim();
+      if (!k || !label) continue;
+      const m = meals.get(k) ?? { value: p.recipeId ? `r:${p.recipeId}` : label, label };
+      // Dernière fois où ce plat a été mangé avant le jour visé.
+      if (p.date < date && (!m.last || p.date > m.last)) m.last = p.date;
+      meals.set(k, m);
     }
     // On évite de retomber sur le plat déjà prévu, sinon l'appui semble ne rien faire.
-    const current = slotOf(date, slot)?.recipeId;
-    const pool = recipes.length > 1 ? recipes.filter((r) => r.id !== current) : recipes;
-    if (pool.length === 1 && pool[0].id === current) {
-      showDiceHint(key, "Une seule recette enregistrée : ajoutez-en d'autres pour varier le tirage.", true);
+    const cur = slotOf(date, slot);
+    if (cur) meals.delete(keyOf(cur));
+    const pool = [...meals.values()];
+    if (!pool.length) {
+      showDiceHint(key, plan.length
+        ? "Un seul repas encodé pour l'instant : notez-en d'autres pour que le dé ait le choix."
+        : "Le dé reprend un des repas déjà encodés. Notez d'abord quelques repas dans le planning.");
       return;
     }
     // Tirage pondéré : plus un plat n'a pas été mangé depuis longtemps, plus il a de chances de sortir.
-    const lastEaten = (id: string) =>
-      plan.filter((p) => p.recipeId === id && p.date < date).map((p) => p.date).sort().pop();
-    const weights = pool.map((r) => {
-      const last = lastEaten(r.id);
-      return last ? Math.min(60, (fromISO(date).getTime() - fromISO(last).getTime()) / 86400000) + 1 : 60;
-    });
-    let pick = Math.random() * weights.reduce((a, b) => a + b, 0);
-    const r = pool.find((_, i) => (pick -= weights[i]) < 0) ?? pool[0];
+    // Un plat seulement prévu plus tard (jamais mangé avant) a peu de chances de sortir.
+    const weights = pool.map((m) =>
+      m.last ? Math.min(60, (fromISO(date).getTime() - fromISO(m.last).getTime()) / 86400000) + 1 : 1);
+    let pick = Math.random() * weights.reduce((x, y) => x + y, 0);
+    const m = pool.find((_, i) => (pick -= weights[i]) < 0) ?? pool[0];
     try {
-      await setSlot(date, slot, `r:${r.id}`);
-      showDiceHint(key, `🎲 ${r.name}`);
+      await setSlot(date, slot, m.value);
+      showDiceHint(key, `🎲 ${m.label}`);
     } catch {
       showDiceHint(key, "Impossible d'enregistrer le tirage. Vérifiez la connexion et réessayez.");
     }
@@ -140,11 +149,6 @@ export default function RepasPage() {
                   {hint && (
                     <p className="ml-12 mt-1 text-xs text-teal-700">
                       {hint.text}
-                      {hint.empty && (
-                        <button className="ml-1 font-medium underline" onClick={() => { setDiceHint(null); setTab("recettes"); }}>
-                          Ajouter une recette
-                        </button>
-                      )}
                     </p>
                   )}
                   </div>
