@@ -23,6 +23,8 @@ export default function RepasPage() {
   const [editing, setEditing] = useState<Recipe | "new" | null>(null);
   const [message, setMessage] = useState("");
   const [recipeQuery, setRecipeQuery] = useState("");
+  // Message affiché sous un créneau après un appui sur le dé (clé `${date}_${slot}`).
+  const [diceHint, setDiceHint] = useState<{ key: string; text: string } | null>(null);
   if (!family) return null;
 
   const days = Array.from({ length: 7 }, (_, i) => toISO(addDays(fromISO(week), i)));
@@ -44,18 +46,48 @@ export default function RepasPage() {
     }, { merge: true });
   }
 
-  function randomIdea(date: string, slot: "midi" | "soir") {
-    if (!recipes.length) return;
+  function showDiceHint(key: string, text: string) {
+    setDiceHint({ key, text });
+    setTimeout(() => setDiceHint((h) => (h?.key === key && h.text === text ? null : h)), 4000);
+  }
+
+  async function randomIdea(date: string, slot: "midi" | "soir") {
+    const key = `${date}_${slot}`;
+    // Tirage parmi les repas déjà encodés dans le planning (recettes ou texte libre), sans doublon.
+    const keyOf = (p: MealSlot) => (p.recipeId ? `r:${p.recipeId}` : normalize(p.text?.trim() ?? ""));
+    const meals = new Map<string, { value: string; label: string; last?: string }>();
+    for (const p of plan) {
+      if (p.id === key) continue;
+      const k = keyOf(p);
+      const label = p.recipeId ? recipe(p.recipeId)?.name : p.text?.trim();
+      if (!k || !label) continue;
+      const m = meals.get(k) ?? { value: p.recipeId ? `r:${p.recipeId}` : label, label };
+      // Dernière fois où ce plat a été mangé avant le jour visé.
+      if (p.date < date && (!m.last || p.date > m.last)) m.last = p.date;
+      meals.set(k, m);
+    }
+    // On évite de retomber sur le plat déjà prévu, sinon l'appui semble ne rien faire.
+    const cur = slotOf(date, slot);
+    if (cur) meals.delete(keyOf(cur));
+    const pool = [...meals.values()];
+    if (!pool.length) {
+      showDiceHint(key, plan.length
+        ? "Un seul repas encodé pour l'instant : notez-en d'autres pour que le dé ait le choix."
+        : "Le dé reprend un des repas déjà encodés. Notez d'abord quelques repas dans le planning.");
+      return;
+    }
     // Tirage pondéré : plus un plat n'a pas été mangé depuis longtemps, plus il a de chances de sortir.
-    const lastEaten = (id: string) =>
-      plan.filter((p) => p.recipeId === id && p.date < date).map((p) => p.date).sort().pop();
-    const weights = recipes.map((r) => {
-      const last = lastEaten(r.id);
-      return last ? Math.min(60, (fromISO(date).getTime() - fromISO(last).getTime()) / 86400000) + 1 : 60;
-    });
-    let pick = Math.random() * weights.reduce((a, b) => a + b, 0);
-    const r = recipes.find((_, i) => (pick -= weights[i]) < 0) ?? recipes[0];
-    setSlot(date, slot, `r:${r.id}`);
+    // Un plat seulement prévu plus tard (jamais mangé avant) a peu de chances de sortir.
+    const weights = pool.map((m) =>
+      m.last ? Math.min(60, (fromISO(date).getTime() - fromISO(m.last).getTime()) / 86400000) + 1 : 1);
+    let pick = Math.random() * weights.reduce((x, y) => x + y, 0);
+    const m = pool.find((_, i) => (pick -= weights[i]) < 0) ?? pool[0];
+    try {
+      await setSlot(date, slot, m.value);
+      showDiceHint(key, `🎲 ${m.label}`);
+    } catch {
+      showDiceHint(key, "Impossible d'enregistrer le tirage. Vérifiez la connexion et réessayez.");
+    }
   }
 
   async function weekToShopping() {
@@ -97,8 +129,10 @@ export default function RepasPage() {
               {SLOTS.map((s) => {
                 const cur = slotOf(d, s);
                 const value = cur?.recipeId ? `r:${cur.recipeId}` : cur?.text ?? "";
+                const hint = diceHint?.key === `${d}_${s}` ? diceHint : null;
                 return (
-                  <div key={s} className="mb-2 flex items-center gap-2">
+                  <div key={s} className="mb-2">
+                  <div className="flex items-center gap-2">
                     <span className="w-10 text-xs uppercase text-stone-400">{s}</span>
                     <input list="recettes" className="input py-1.5"
                       placeholder="Choisir ou écrire…"
@@ -111,6 +145,12 @@ export default function RepasPage() {
                         if (next !== value) setSlot(d, s, next);
                       }} />
                     <button className="btn-ghost px-2" title="Idée au hasard" onClick={() => randomIdea(d, s)}>🎲</button>
+                  </div>
+                  {hint && (
+                    <p className="ml-12 mt-1 text-xs text-teal-700">
+                      {hint.text}
+                    </p>
+                  )}
                   </div>
                 );
               })}
