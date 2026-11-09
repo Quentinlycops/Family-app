@@ -10,8 +10,13 @@ import type { MealSlot, Recipe, ShoppingItem } from "@/lib/types";
 import Modal from "@/components/Modal";
 import MealHistory from "@/components/MealHistory";
 import { matches, normalize } from "@/lib/search";
+import { similarMeals } from "@/lib/meals";
+
+type KnownMeal = { value: string; label: string };
 
 const SLOTS = ["midi", "soir"] as const;
+// Tirage du dé (hors rendu : appelé seulement au clic).
+const randomUnit = () => Math.random();
 
 export default function RepasPage() {
   const { family } = useFamily();
@@ -25,11 +30,37 @@ export default function RepasPage() {
   const [recipeQuery, setRecipeQuery] = useState("");
   // Message affiché sous un créneau après un appui sur le dé (clé `${date}_${slot}`).
   const [diceHint, setDiceHint] = useState<{ key: string; text: string } | null>(null);
+  // Doublons possibles proposés après l'encodage d'un repas (clé `${date}_${slot}`).
+  const [dupHint, setDupHint] = useState<{ key: string; typed: string; options: KnownMeal[] } | null>(null);
   if (!family) return null;
 
   const days = Array.from({ length: 7 }, (_, i) => toISO(addDays(fromISO(week), i)));
   const slotOf = (date: string, slot: string) => plan.find((p) => p.id === `${date}_${slot}`);
   const recipe = (id?: string) => recipes.find((r) => r.id === id);
+
+  // Tous les repas déjà connus : recettes et repas écrits à la main dans le planning, sans doublon exact.
+  function knownMeals(): KnownMeal[] {
+    const seen = new Map<string, KnownMeal>();
+    for (const r of recipes) seen.set(normalize(r.name.trim()), { value: `r:${r.id}`, label: r.name });
+    for (const p of plan) {
+      const t = p.text?.trim();
+      if (t && !seen.has(normalize(t))) seen.set(normalize(t), { value: t, label: t });
+    }
+    return [...seen.values()];
+  }
+
+  async function encodeSlot(date: string, slot: "midi" | "soir", typed: string, next: string) {
+    const key = `${date}_${slot}`;
+    // On enregistre tout de suite ce qui a été écrit, puis on propose les repas qui pourraient être le même.
+    const options = next && !next.startsWith("r:") ? similarMeals(typed, knownMeals()) : [];
+    setDupHint(options.length ? { key, typed, options } : null);
+    await setSlot(date, slot, next);
+  }
+
+  async function pickExisting(date: string, slot: "midi" | "soir", m: KnownMeal) {
+    setDupHint(null);
+    await setSlot(date, slot, m.value);
+  }
 
   async function setSlot(date: string, slot: "midi" | "soir", value: string) {
     const id = `${date}_${slot}`;
@@ -80,7 +111,7 @@ export default function RepasPage() {
     // Un plat seulement prévu plus tard (jamais mangé avant) a peu de chances de sortir.
     const weights = pool.map((m) =>
       m.last ? Math.min(60, (fromISO(date).getTime() - fromISO(m.last).getTime()) / 86400000) + 1 : 1);
-    let pick = Math.random() * weights.reduce((x, y) => x + y, 0);
+    let pick = randomUnit() * weights.reduce((x, y) => x + y, 0);
     const m = pool.find((_, i) => (pick -= weights[i]) < 0) ?? pool[0];
     try {
       await setSlot(date, slot, m.value);
@@ -130,6 +161,7 @@ export default function RepasPage() {
                 const cur = slotOf(d, s);
                 const value = cur?.recipeId ? `r:${cur.recipeId}` : cur?.text ?? "";
                 const hint = diceHint?.key === `${d}_${s}` ? diceHint : null;
+                const dup = dupHint?.key === `${d}_${s}` ? dupHint : null;
                 return (
                   <div key={s} className="mb-2">
                   <div className="flex items-center gap-2">
@@ -142,7 +174,7 @@ export default function RepasPage() {
                         const v = e.target.value.trim();
                         const r = recipes.find((x) => x.name === v);
                         const next = r ? `r:${r.id}` : v;
-                        if (next !== value) setSlot(d, s, next);
+                        if (next !== value) encodeSlot(d, s, v, next);
                       }} />
                     <button className="btn-ghost px-2" title="Idée au hasard" onClick={() => randomIdea(d, s)}>🎲</button>
                   </div>
@@ -150,6 +182,23 @@ export default function RepasPage() {
                     <p className="ml-12 mt-1 text-xs text-teal-700">
                       {hint.text}
                     </p>
+                  )}
+                  {dup && (
+                    <div className="ml-12 mt-1 rounded-lg bg-teal-50 p-2 text-xs text-teal-800">
+                      <p>Ce repas existe peut-être déjà :</p>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {dup.options.map((m) => (
+                          <button key={m.value} className="rounded-full bg-surface px-2 py-0.5 shadow-sm"
+                            onClick={() => pickExisting(d, s, m)}>
+                            {m.label}
+                          </button>
+                        ))}
+                        <button className="rounded-full px-2 py-0.5 text-teal-700 underline"
+                          onClick={() => setDupHint(null)}>
+                          Garder « {dup.typed} »
+                        </button>
+                      </div>
+                    </div>
                   )}
                   </div>
                 );
@@ -194,17 +243,31 @@ export default function RepasPage() {
         </>
       )}
 
-      {editing && <RecipeForm recipe={editing === "new" ? undefined : editing} onClose={() => setEditing(null)} />}
+      {editing && (
+        <RecipeForm key={editing === "new" ? "new" : editing.id}
+          recipe={editing === "new" ? undefined : editing} recipes={recipes}
+          onOpen={(r) => setEditing(r)} onClose={() => setEditing(null)} />
+      )}
     </div>
   );
 }
 
-function RecipeForm({ recipe, onClose }: { recipe?: Recipe; onClose: () => void }) {
+function RecipeForm({ recipe, recipes, onOpen, onClose }: {
+  recipe?: Recipe;
+  recipes: Recipe[];
+  onOpen: (r: Recipe) => void;
+  onClose: () => void;
+}) {
   const { family } = useFamily();
   const [name, setName] = useState(recipe?.name ?? "");
   const [ingredients, setIngredients] = useState(recipe?.ingredients.join("\n") ?? "");
   const [tags, setTags] = useState(recipe?.tags?.join(", ") ?? "");
   const [notes, setNotes] = useState(recipe?.notes ?? "");
+  const [ignoreDup, setIgnoreDup] = useState(false);
+  // Recettes qui pourraient être le même plat que le nom tapé (hors la recette en cours de modification).
+  const similar = ignoreDup || name.trim() === recipe?.name
+    ? []
+    : similarMeals(name, recipes.filter((r) => r.id !== recipe?.id).map((r) => ({ label: r.name, r })));
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -229,6 +292,23 @@ function RecipeForm({ recipe, onClose }: { recipe?: Recipe; onClose: () => void 
     <Modal title={recipe ? "Modifier la recette" : "Nouvelle recette"} onClose={onClose}>
       <form onSubmit={save} className="space-y-3">
         <input className="input text-lg" placeholder="Nom du plat" value={name} onChange={(e) => setName(e.target.value)} required autoFocus />
+        {similar.length > 0 && (
+          <div className="rounded-lg bg-teal-50 p-2 text-sm text-teal-800">
+            <p>Cette recette existe peut-être déjà :</p>
+            <div className="mt-1 flex flex-wrap gap-1">
+              {similar.map(({ r }) => (
+                <button type="button" key={r.id} className="rounded-full bg-surface px-2 py-0.5 shadow-sm"
+                  onClick={() => onOpen(r)}>
+                  {r.name}
+                </button>
+              ))}
+              <button type="button" className="rounded-full px-2 py-0.5 text-teal-700 underline"
+                onClick={() => setIgnoreDup(true)}>
+                Non, c&apos;est une autre
+              </button>
+            </div>
+          </div>
+        )}
         <div>
           <label className="label">Ingrédients (un par ligne)</label>
           <textarea className="input" rows={6} value={ingredients} onChange={(e) => setIngredients(e.target.value)} />
