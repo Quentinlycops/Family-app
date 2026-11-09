@@ -65,10 +65,12 @@ export default function RepasPage() {
   }
 
   async function pickExisting(date: string, slot: "midi" | "soir", m: KnownMeal) {
-    // On quitte d'abord le champ (ce qui enregistre le texte tapé), puis on le remplace par le repas choisi.
-    (document.activeElement as HTMLElement | null)?.blur();
+    // On écrit le repas choisi dans le champ, avec exactement la même orthographe, puis on l'enregistre.
+    const input = document.querySelector<HTMLInputElement>(`input[data-slot="${date}_${slot}"]`);
+    if (input) input.value = m.label;
+    if (input && document.activeElement === input) input.blur(); // onBlur enregistre la valeur affichée
+    else await setSlot(date, slot, m.value);
     setDupHint(null);
-    await setSlot(date, slot, m.value);
   }
 
   async function setSlot(date: string, slot: "midi" | "soir", value: string) {
@@ -179,6 +181,7 @@ export default function RepasPage() {
                       placeholder="Choisir ou écrire…"
                       defaultValue={recipe(cur?.recipeId)?.name ?? cur?.text ?? ""}
                       key={value}
+                      data-slot={`${d}_${s}`}
                       onChange={(e) => showSimilar(`${d}_${s}`, e.target.value)}
                       onBlur={(e) => {
                         const v = e.target.value.trim();
