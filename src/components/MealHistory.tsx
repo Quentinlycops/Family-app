@@ -4,7 +4,9 @@ import { deleteDoc, deleteField, doc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useFamily } from "@/lib/family";
 import { addDays, daysAgo, fmtShort, toISO, today } from "@/lib/dates";
-import { matches } from "@/lib/search";
+import { matches, normalize } from "@/lib/search";
+import { similarMeals } from "@/lib/meals";
+import SimilarMeals from "@/components/SimilarMeals";
 import type { MealSlot, Recipe } from "@/lib/types";
 
 /** Historique de tous les repas passés, avec recherche par mot-clé et statistiques. */
@@ -13,6 +15,8 @@ export default function MealHistory({ meals, recipes }: { meals: MealSlot[]; rec
   const [q, setQ] = useState("");
   const [log, setLog] = useState({ date: today(), slot: "soir" as "midi" | "soir", dish: "", note: "" });
   const [editingNote, setEditingNote] = useState<string | null>(null);
+  // Texte pour lequel on a choisi de garder ce qu'on a écrit malgré les repas proches proposés.
+  const [keptDish, setKeptDish] = useState("");
   const recipe = (id?: string) => recipes.find((r) => r.id === id);
   const nameOf = (m: MealSlot) => recipe(m.recipeId)?.name ?? m.text ?? "";
 
@@ -48,6 +52,18 @@ export default function MealHistory({ meals, recipes }: { meals: MealSlot[]; rec
     .filter((x) => !x.last || x.last < toISO(addDays(new Date(), -30)))
     .sort((a, b) => (a.last ?? "").localeCompare(b.last ?? ""))
     .slice(0, 5);
+
+  // Repas déjà connus (recettes et repas écrits à la main), pour proposer un doublon possible pendant la saisie.
+  const known = useMemo(() => {
+    const seen = new Map<string, { label: string }>();
+    for (const r of recipes) seen.set(normalize(r.name.trim()), { label: r.name });
+    for (const m of meals) {
+      const t = m.text?.trim();
+      if (t && !seen.has(normalize(t))) seen.set(normalize(t), { label: t });
+    }
+    return [...seen.values()];
+  }, [meals, recipes]);
+  const similar = log.dish.trim() && log.dish !== keptDish ? similarMeals(log.dish, known) : [];
 
   async function addLog(e: React.FormEvent) {
     e.preventDefault();
@@ -88,6 +104,8 @@ export default function MealHistory({ meals, recipes }: { meals: MealSlot[]; rec
             {recipes.map((r) => <option key={r.id} value={r.name} />)}
             {stats.filter((s) => !recipes.some((r) => r.name === s.name)).map((s) => <option key={s.name} value={s.name} />)}
           </datalist>
+          <SimilarMeals typed={log.dish} options={similar}
+            onPick={(m) => setLog({ ...log, dish: m.label })} onKeep={() => setKeptDish(log.dish)} />
           <input className="input" placeholder="Souvenir (facultatif) : chez mamie, Léa a adoré…" value={log.note}
             onChange={(e) => setLog({ ...log, note: e.target.value })} />
           <button className="btn w-full">Enregistrer</button>
