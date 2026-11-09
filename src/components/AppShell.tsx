@@ -16,7 +16,7 @@ const TABS = [
 ];
 
 export default function AppShell({ children }: { children: ReactNode }) {
-  const { user, family, me } = useFamily();
+  const { user, family } = useFamily();
   const path = usePathname();
 
   if (user === undefined || (user && family === undefined))
@@ -34,24 +34,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
           🏡 {family.name}
         </Link>
         <div className="flex items-center">
-          <Link
-            href="/famille"
-            className="flex items-center gap-2 rounded-full px-2 py-1 text-sm hover:bg-stone-100"
-          >
-            {family.members.map((m) => (
-              <span
-                key={m.id}
-                title={m.name}
-                className="-ml-1 flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-white ring-2 ring-stone-50"
-                style={{ background: m.color }}
-              >
-                {m.name[0]}
-              </span>
-            ))}
-            <span className="sr-only">Famille ({me?.name})</span>
-          </Link>
           <Link href="/parametres" title="Paramètres" aria-label="Paramètres"
-            className={`ml-1 flex h-9 w-9 items-center justify-center rounded-full text-xl hover:bg-stone-100 ${path.startsWith("/parametres") ? "bg-stone-200" : ""}`}>
+            className={`flex h-10 w-10 items-center justify-center rounded-full text-2xl hover:bg-stone-100 ${path.startsWith("/parametres") ? "bg-stone-200" : ""}`}>
             ⚙️
           </Link>
         </div>

@@ -27,6 +27,9 @@ export default function ParametresPage() {
       <Link href="/famille" className="card block font-medium text-teal-700">
         👨‍👩‍👧‍👧 Membres de la famille, dates de naissance, code d&apos;invitation ›
       </Link>
+      <Link href="/contacts" className="card block font-medium text-teal-700">
+        📞 Contacts et anniversaires (grands-parents, cousines…) ›
+      </Link>
 
       <section className="card flex items-center justify-between">
         <p className="text-sm text-stone-600">
