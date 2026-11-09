@@ -6,7 +6,7 @@ import { useFamily } from "@/lib/family";
 import { useCollection } from "@/lib/useCollection";
 import { useEvents } from "@/lib/useEvents";
 import { contactBirthDate, useContacts } from "@/lib/contacts";
-import { ageLabel, fmtLong, fmtShort, nextBirthday, relativeDay, today, upcoming } from "@/lib/dates";
+import { fmtLong, fmtShort, nextBirthday, relativeDay, today, upcoming } from "@/lib/dates";
 import type { MealSlot, Recipe, ShoppingItem, Todo, Trip } from "@/lib/types";
 
 function greeting() {
@@ -74,7 +74,6 @@ export default function AccueilPage() {
   const toShow = (urgent.length ? urgent : openTodos).slice(0, 5);
 
   const toBuy = shopping.filter((s) => !s.checked);
-  const kids = family.members.filter((m) => m.role === "enfant");
   const nextTrip = trips.filter((t) => t.endDate >= now).sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
 
   return (
@@ -183,22 +182,6 @@ export default function AccueilPage() {
         </span>
         <span className="text-stone-400">›</span>
       </Link>
-
-      <Section title="Les enfants" href="/enfants">
-        <div className="grid grid-cols-2 gap-3">
-          {kids.map((k) => (
-            <Link key={k.id} href={`/enfants#${k.id}`} className="flex items-center gap-3 rounded-xl p-2 hover:bg-stone-100">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full text-lg font-bold text-white" style={{ background: k.color }}>
-                {k.name[0]}
-              </span>
-              <span>
-                <b>{k.name}</b>
-                <span className="block text-xs text-stone-500">{ageLabel(k.birthDate)}</span>
-              </span>
-            </Link>
-          ))}
-        </div>
-      </Section>
 
       <Section title="🎂 Anniversaires" href="/contacts?anniv=1" linkLabel="+ Ajouter">
         <ul className="space-y-1 text-sm">

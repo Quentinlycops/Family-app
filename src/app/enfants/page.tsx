@@ -1,18 +1,15 @@
 "use client";
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useFamily } from "@/lib/family";
-import { useContacts } from "@/lib/contacts";
 import { ageLabel, fmtShort, today } from "@/lib/dates";
-import type { Contact, KidProfile, Member, SizeEntry } from "@/lib/types";
+import type { KidProfile, Member, SizeEntry } from "@/lib/types";
 
 const SIZE_FIELDS = [["clothes", "Vêtements", "4 ans"], ["shoes", "Chaussures", "26"], ["head", "Tour de tête", "50 cm"]] as const;
 
 export default function EnfantsPage() {
   const { family } = useFamily();
-  const { items: contacts } = useContacts();
   const kids = family?.members.filter((m) => m.role === "enfant") ?? [];
   // Sur téléphone, une fiche à la fois (on passe de l'une à l'autre) ; sur grand écran, les deux côte à côte.
   const [sel, setSel] = useState(() => (typeof window === "undefined" ? "" : window.location.hash.slice(1)));
@@ -21,10 +18,7 @@ export default function EnfantsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Les enfants</h1>
-        <Link href="/contacts" className="btn-ghost text-sm">📞 Contacts</Link>
-      </div>
+      <h1 className="text-xl font-semibold">Les enfants</h1>
       <div className="grid grid-cols-2 gap-2 lg:hidden">
         {kids.map((k) => {
           const on = k.id === current;
@@ -46,7 +40,7 @@ export default function EnfantsPage() {
         {kids.map((k) => (
           <div key={k.id} className={`rounded-3xl border-t-8 bg-stone-100/60 p-3 sm:p-4 ${k.id === current ? "" : "hidden lg:block"}`}
             style={{ borderColor: k.color }}>
-            <KidCard kid={k} fid={family.id} contacts={contacts.filter((c) => c.memberIds.includes(k.id))} />
+            <KidCard kid={k} fid={family.id} />
           </div>
         ))}
       </div>
@@ -54,7 +48,7 @@ export default function EnfantsPage() {
   );
 }
 
-function KidCard({ kid, fid, contacts }: { kid: Member; fid: string; contacts: Contact[] }) {
+function KidCard({ kid, fid }: { kid: Member; fid: string }) {
   const [p, setP] = useState<KidProfile>({});
   const [loaded, setLoaded] = useState(false);
   const ref = doc(db, "families", fid, "kids", kid.id);
@@ -225,21 +219,6 @@ function KidCard({ kid, fid, contacts }: { kid: Member; fid: string; contacts: C
         </form>
       </div>
 
-      <div className="card">
-        <div className="mb-2 flex items-center justify-between">
-          <h3 className="font-semibold">📞 Contacts</h3>
-          <Link href={`/contacts?pour=${kid.id}`} className="text-sm text-teal-700">Gérer ›</Link>
-        </div>
-        {contacts.length === 0 && <p className="text-sm text-stone-400">Aucun contact pour {kid.name}.</p>}
-        <ul className="divide-y divide-stone-100 text-sm">
-          {[...contacts].sort((x, y) => x.name.localeCompare(y.name)).map((c) => (
-            <li key={c.id} className="flex items-center gap-2 py-1.5">
-              <span className="min-w-0 flex-1 truncate"><b>{c.name}</b>{c.role && <span className="text-stone-500"> · {c.role}</span>}</span>
-              {c.phone && <a className="shrink-0 text-teal-700" href={`tel:${c.phone.replace(/\s/g, "")}`}>{c.phone}</a>}
-            </li>
-          ))}
-        </ul>
-      </div>
     </section>
   );
 }
