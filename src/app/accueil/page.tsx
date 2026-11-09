@@ -162,7 +162,7 @@ export default function AccueilPage() {
         </ul>
       </Section>
 
-      <Link href={nextTrip ? `/voyages#${nextTrip.id}` : "/voyages"} className="card flex items-center gap-3">
+      <Link href="/voyages" className="card flex items-center gap-3">
         <span className="text-2xl">🧳</span>
         <span className="min-w-0 flex-1">
           <b className="block">Voyages</b>
