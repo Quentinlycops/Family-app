@@ -1,18 +1,16 @@
 "use client";
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useFamily } from "@/lib/family";
-import { useContacts } from "@/lib/contacts";
-import { ageLabel, fmtShort, today } from "@/lib/dates";
-import type { Contact, KidProfile, Member, SizeEntry } from "@/lib/types";
+import { ageLabel, fmtShort, fromISO, today } from "@/lib/dates";
+import Modal from "@/components/Modal";
+import type { KidProfile, Member, SizeEntry } from "@/lib/types";
 
 const SIZE_FIELDS = [["clothes", "Vêtements", "4 ans"], ["shoes", "Chaussures", "26"], ["head", "Tour de tête", "50 cm"]] as const;
 
 export default function EnfantsPage() {
   const { family } = useFamily();
-  const { items: contacts } = useContacts();
   const kids = family?.members.filter((m) => m.role === "enfant") ?? [];
   // Sur téléphone, une fiche à la fois (on passe de l'une à l'autre) ; sur grand écran, les deux côte à côte.
   const [sel, setSel] = useState(() => (typeof window === "undefined" ? "" : window.location.hash.slice(1)));
@@ -21,10 +19,7 @@ export default function EnfantsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Les enfants</h1>
-        <Link href="/contacts" className="btn-ghost text-sm">📞 Contacts</Link>
-      </div>
+      <h1 className="text-xl font-semibold">Les enfants</h1>
       <div className="grid grid-cols-2 gap-2 lg:hidden">
         {kids.map((k) => {
           const on = k.id === current;
@@ -42,11 +37,13 @@ export default function EnfantsPage() {
           );
         })}
       </div>
-      <div className="grid items-start gap-4 lg:grid-cols-2">
+      {/* Sur grand écran, les rubriques des deux fiches partagent les mêmes lignes : elles restent au même niveau. */}
+      <div className="grid gap-x-4 gap-y-3 lg:grid-cols-2">
         {kids.map((k) => (
-          <div key={k.id} className={`rounded-3xl border-t-8 bg-stone-100/60 p-3 sm:p-4 ${k.id === current ? "" : "hidden lg:block"}`}
+          <div key={k.id} id={k.id}
+            className={`space-y-3 rounded-3xl border-t-8 bg-stone-100/60 p-3 sm:p-4 lg:row-span-6 lg:grid lg:grid-rows-subgrid lg:space-y-0 ${k.id === current ? "" : "hidden"}`}
             style={{ borderColor: k.color }}>
-            <KidCard kid={k} fid={family.id} contacts={contacts.filter((c) => c.memberIds.includes(k.id))} />
+            <KidCard kid={k} fid={family.id} />
           </div>
         ))}
       </div>
@@ -54,7 +51,7 @@ export default function EnfantsPage() {
   );
 }
 
-function KidCard({ kid, fid, contacts }: { kid: Member; fid: string; contacts: Contact[] }) {
+function KidCard({ kid, fid }: { kid: Member; fid: string }) {
   const [p, setP] = useState<KidProfile>({});
   const [loaded, setLoaded] = useState(false);
   const ref = doc(db, "families", fid, "kids", kid.id);
@@ -76,6 +73,7 @@ function KidCard({ kid, fid, contacts }: { kid: Member; fid: string; contacts: C
   const [size, setSize] = useState({ date: today(), clothes: "", shoes: "", head: "" });
   const [growth, setGrowth] = useState({ date: today(), weight: "", height: "" });
   const [vaccine, setVaccine] = useState({ name: "", date: today(), nextDue: "" });
+  const [chart, setChart] = useState(false);
   const num = (s: string) => (s ? Number(s.replace(",", ".")) : undefined);
   // Historique des tailles, du plus récent au plus ancien ; l'ancienne fiche unique y est reprise.
   const legacy = p.sizes && (p.sizes.clothes || p.sizes.shoes || p.sizes.head)
@@ -88,7 +86,7 @@ function KidCard({ kid, fid, contacts }: { kid: Member; fid: string; contacts: C
   if (!loaded) return <div className="card text-stone-400">Chargement…</div>;
 
   return (
-    <section id={kid.id} className="space-y-3">
+    <>
       <div className="flex items-center gap-3">
         <span className="flex h-12 w-12 items-center justify-center rounded-full text-xl font-bold text-white" style={{ background: kid.color }}>
           {kid.name[0]}
@@ -97,6 +95,13 @@ function KidCard({ kid, fid, contacts }: { kid: Member; fid: string; contacts: C
           <h2 className="text-lg font-bold">{kid.name}</h2>
           <p className="text-sm text-stone-500">{ageLabel(kid.birthDate)} · née le {fmtShort(kid.birthDate)} {kid.birthDate.slice(0, 4)}</p>
         </div>
+      </div>
+
+      <div className="card">
+        <h3 className="mb-2 font-semibold">📝 Notes</h3>
+        <textarea key={p.note ?? ""} className="input" rows={3} defaultValue={p.note ?? ""}
+          placeholder={`Ce qu'il faut savoir sur ${kid.name} : habitudes, petits mots, choses à retenir…`}
+          onBlur={(e) => e.target.value !== (p.note ?? "") && save({ note: e.target.value })} />
       </div>
 
       <div className="card">
@@ -150,7 +155,12 @@ function KidCard({ kid, fid, contacts }: { kid: Member; fid: string; contacts: C
       </div>
 
       <div className="card">
-        <h3 className="mb-2 font-semibold">📏 Croissance</h3>
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="font-semibold">📏 Croissance</h3>
+          {lastGrowth.length > 0 && (
+            <button type="button" className="btn-ghost px-2 py-1 text-sm text-teal-700" onClick={() => setChart(true)}>📈 Voir la courbe</button>
+          )}
+        </div>
         <form className="flex flex-wrap gap-2" onSubmit={(e) => {
           e.preventDefault();
           if (!growth.weight && !growth.height) return;
@@ -165,13 +175,25 @@ function KidCard({ kid, fid, contacts }: { kid: Member; fid: string; contacts: C
         </form>
         {lastGrowth.length > 0 && (
           <ul className="mt-2 divide-y divide-stone-100 text-sm">
-            {lastGrowth.slice(0, 6).map((g, i) => (
-              <li key={i} className="flex justify-between py-1">
-                <span className="text-stone-500">{fmtShort(g.date)} {g.date.slice(0, 4)}</span>
-                <span>{g.weight && `${g.weight.toLocaleString("fr-FR")} kg`}{g.weight && g.height && " · "}{g.height && `${g.height} cm`}</span>
+            {lastGrowth.map((g, i) => (
+              <li key={i} className="flex items-center gap-2 py-1">
+                <span className="flex-1 text-stone-500">{fmtShort(g.date)} {g.date.slice(0, 4)}</span>
+                <span>{g.weight && `${g.weight.toLocaleString("fr-FR")} kg`}{g.weight && g.height && " · "}{g.height && `${g.height.toLocaleString("fr-FR")} cm`}</span>
+                <button className="text-stone-400 hover:text-red-600" aria-label="Supprimer"
+                  onClick={() => confirm("Supprimer cette mesure ?") && save({ growth: (p.growth ?? []).filter((x) => x !== g) })}>×</button>
               </li>
             ))}
           </ul>
+        )}
+        {chart && (
+          <Modal title={`Courbe de croissance de ${kid.name}`} onClose={() => setChart(false)}>
+            <div className="space-y-5">
+              <GrowthChart title="Taille" unit="cm" color={kid.color} birthDate={kid.birthDate}
+                points={lastGrowth.filter((g) => g.height).map((g) => ({ date: g.date, value: g.height! }))} />
+              <GrowthChart title="Poids" unit="kg" color={kid.color} birthDate={kid.birthDate}
+                points={lastGrowth.filter((g) => g.weight).map((g) => ({ date: g.date, value: g.weight! }))} />
+            </div>
+          </Modal>
         )}
       </div>
 
@@ -225,21 +247,60 @@ function KidCard({ kid, fid, contacts }: { kid: Member; fid: string; contacts: C
         </form>
       </div>
 
-      <div className="card">
-        <div className="mb-2 flex items-center justify-between">
-          <h3 className="font-semibold">📞 Contacts</h3>
-          <Link href={`/contacts?pour=${kid.id}`} className="text-sm text-teal-700">Gérer ›</Link>
-        </div>
-        {contacts.length === 0 && <p className="text-sm text-stone-400">Aucun contact pour {kid.name}.</p>}
-        <ul className="divide-y divide-stone-100 text-sm">
-          {[...contacts].sort((x, y) => x.name.localeCompare(y.name)).map((c) => (
-            <li key={c.id} className="flex items-center gap-2 py-1.5">
-              <span className="min-w-0 flex-1 truncate"><b>{c.name}</b>{c.role && <span className="text-stone-500"> · {c.role}</span>}</span>
-              {c.phone && <a className="shrink-0 text-teal-700" href={`tel:${c.phone.replace(/\s/g, "")}`}>{c.phone}</a>}
-            </li>
-          ))}
-        </ul>
-      </div>
-    </section>
+    </>
+  );
+}
+
+/** Âge en mois (avec décimales) à une date donnée. */
+const monthsAt = (birthDate: string, date: string) =>
+  (fromISO(date).getTime() - fromISO(birthDate).getTime()) / (30.4375 * 86400000);
+
+const ageShort = (m: number) =>
+  m < 24 ? `${Math.round(m)} mois` : `${Math.floor(m / 12)} ans${m % 12 >= 1 ? ` ${Math.floor(m % 12)} m` : ""}`;
+
+/** Courbe simple (SVG) des mesures d'un enfant, en fonction de son âge. */
+function GrowthChart({ title, unit, color, birthDate, points }: {
+  title: string; unit: string; color: string; birthDate: string; points: { date: string; value: number }[];
+}) {
+  const pts = [...points].sort((a, b) => a.date.localeCompare(b.date)).map((p) => ({ ...p, m: monthsAt(birthDate, p.date) }));
+  if (pts.length === 0) return <p className="text-sm text-stone-400">{title} : aucune mesure pour l&apos;instant.</p>;
+  const W = 320, H = 180, L = 36, R = 10, T = 10, B = 24;
+  const vals = pts.map((p) => p.value);
+  const pad = Math.max((Math.max(...vals) - Math.min(...vals)) * 0.15, unit === "kg" ? 0.5 : 2);
+  const y0 = Math.floor(Math.min(...vals) - pad), y1 = Math.ceil(Math.max(...vals) + pad);
+  const x0 = Math.max(0, Math.floor(pts[0].m) - 1), x1 = Math.ceil(pts[pts.length - 1].m) + 1;
+  const x = (m: number) => L + ((m - x0) / (x1 - x0)) * (W - L - R);
+  const y = (v: number) => T + (1 - (v - y0) / (y1 - y0)) * (H - T - B);
+  const yTicks = Array.from({ length: 5 }, (_, i) => y0 + ((y1 - y0) * i) / 4);
+  const xTicks = Array.from({ length: 4 }, (_, i) => x0 + ((x1 - x0) * i) / 3);
+  const fmt = (v: number) => v.toLocaleString("fr-FR", { maximumFractionDigits: 1 });
+  const last = pts[pts.length - 1];
+  return (
+    <figure>
+      <figcaption className="mb-1 flex justify-between text-sm">
+        <b>{title} <span className="font-normal text-stone-500">({unit})</span></b>
+        <span className="text-stone-500">dernière : {fmt(last.value)} {unit} le {fmtShort(last.date)} {last.date.slice(0, 4)}</span>
+      </figcaption>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" role="img" aria-label={`Courbe : ${title}`}>
+        {yTicks.map((v) => (
+          <g key={v}>
+            <line x1={L} x2={W - R} y1={y(v)} y2={y(v)} className="stroke-stone-200" strokeWidth={1} />
+            <text x={L - 4} y={y(v) + 3} textAnchor="end" className="fill-stone-500" fontSize={9}>{fmt(v)}</text>
+          </g>
+        ))}
+        {xTicks.map((m, i) => (
+          <text key={m} x={x(m)} y={H - 6} textAnchor={i === 0 ? "start" : i === xTicks.length - 1 ? "end" : "middle"} className="fill-stone-500" fontSize={9}>{ageShort(m)}</text>
+        ))}
+        {pts.length > 1 && (
+          <polyline points={pts.map((p) => `${x(p.m)},${y(p.value)}`).join(" ")} fill="none" stroke={color} strokeWidth={2} strokeLinejoin="round" />
+        )}
+        {pts.map((p) => (
+          <circle key={p.date + p.value} cx={x(p.m)} cy={y(p.value)} r={3.5} fill={color}>
+            <title>{`${fmtShort(p.date)} ${p.date.slice(0, 4)} : ${fmt(p.value)} ${unit}`}</title>
+          </circle>
+        ))}
+      </svg>
+      <p className="text-center text-[10px] text-stone-400">âge</p>
+    </figure>
   );
 }

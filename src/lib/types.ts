@@ -114,6 +114,7 @@ export type KidProfile = {
   health?: { doctor?: string; allergies?: string; bloodType?: string; notes?: string };
   vaccines?: { name: string; date?: string; nextDue?: string }[];
   contacts?: { name: string; role: string; phone?: string }[]; // ancien format, recopié dans `contacts`
+  note?: string; // note libre sur l'enfant
   contactsMoved?: boolean; // vrai une fois les anciens contacts recopiés dans `contacts`
 };
 
