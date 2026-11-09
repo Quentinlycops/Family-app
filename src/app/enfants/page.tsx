@@ -74,6 +74,7 @@ function KidCard({ kid, fid }: { kid: Member; fid: string }) {
   const [growth, setGrowth] = useState({ date: today(), weight: "", height: "" });
   const [vaccine, setVaccine] = useState({ name: "", date: today(), nextDue: "" });
   const [chart, setChart] = useState(false);
+  const [editNote, setEditNote] = useState(false);
   const num = (s: string) => (s ? Number(s.replace(",", ".")) : undefined);
   // Historique des tailles, du plus récent au plus ancien ; l'ancienne fiche unique y est reprise.
   const legacy = p.sizes && (p.sizes.clothes || p.sizes.shoes || p.sizes.head)
@@ -92,16 +93,13 @@ function KidCard({ kid, fid }: { kid: Member; fid: string }) {
           {kid.name[0]}
         </span>
         <div>
-          <h2 className="text-lg font-bold">{kid.name}</h2>
+          <h2 className="flex items-center gap-1 text-lg font-bold">
+            {kid.name}
+            <button type="button" className="rounded-full px-1.5 text-sm font-normal text-stone-400 hover:bg-stone-200 hover:text-stone-700"
+              aria-label={`Note sur ${kid.name}`} title="Écrire une note" onClick={() => setEditNote(true)}>✏️</button>
+          </h2>
           <p className="text-sm text-stone-500">{ageLabel(kid.birthDate)} · née le {fmtShort(kid.birthDate)} {kid.birthDate.slice(0, 4)}</p>
         </div>
-      </div>
-
-      <div className="card">
-        <h3 className="mb-2 font-semibold">📝 Notes</h3>
-        <textarea key={p.note ?? ""} className="input" rows={3} defaultValue={p.note ?? ""}
-          placeholder={`Ce qu'il faut savoir sur ${kid.name} : habitudes, petits mots, choses à retenir…`}
-          onBlur={(e) => e.target.value !== (p.note ?? "") && save({ note: e.target.value })} />
       </div>
 
       <div className="card">
@@ -247,6 +245,21 @@ function KidCard({ kid, fid }: { kid: Member; fid: string }) {
         </form>
       </div>
 
+      {/* Note libre, discrète, tout en bas : on l'écrit via le petit stylo à côté du prénom. */}
+      <div>
+        {editNote ? (
+          <textarea className="input text-sm" rows={2} autoFocus defaultValue={p.note ?? ""}
+            placeholder={`Une note sur ${kid.name}…`}
+            onBlur={(e) => {
+              setEditNote(false);
+              if (e.target.value.trim() !== (p.note ?? "")) save({ note: e.target.value.trim() });
+            }} />
+        ) : p.note ? (
+          <button type="button" className="w-full whitespace-pre-line text-left text-xs text-stone-500" onClick={() => setEditNote(true)}>
+            📝 {p.note}
+          </button>
+        ) : null}
+      </div>
     </>
   );
 }
