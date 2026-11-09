@@ -5,6 +5,7 @@ import { db } from "./firebase";
 import { useFamily } from "./family";
 import { useCollection } from "./useCollection";
 import { birthdayEvents } from "./dates";
+import { contactBirthdayEvents, useContacts } from "./contacts";
 import type { CalendarEvent, CalendarFeed, CalendarSettings } from "./types";
 
 type FeedResult = { at: number; events: CalendarEvent[]; error?: string };
@@ -49,6 +50,7 @@ export const colorKey = (e: CalendarEvent) => (e.feedId ? `${e.feedId}:${e.uid}`
 export function useEvents() {
   const { family, member } = useFamily();
   const { items, loading } = useCollection<CalendarEvent>("events");
+  const { items: contacts } = useContacts();
   const settings = useCalendarSettings();
   const [external, setExternal] = useState<Record<string, FeedResult>>({});
   const feeds = settings.feeds;
@@ -69,8 +71,8 @@ export function useEvents() {
   }, [feeds]);
 
   const own = useMemo(
-    () => [...items, ...birthdayEvents(family?.members ?? [])],
-    [items, family],
+    () => [...items, ...birthdayEvents(family?.members ?? []), ...contactBirthdayEvents(contacts)],
+    [items, family, contacts],
   );
 
   // Publie l'agenda familial pour l'abonnement Google (seulement quand il change).

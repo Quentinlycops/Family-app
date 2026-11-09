@@ -108,7 +108,23 @@ export type KidProfile = {
   growth?: { date: string; weight?: number; height?: number }[];
   health?: { doctor?: string; allergies?: string; bloodType?: string; notes?: string };
   vaccines?: { name: string; date?: string; nextDue?: string }[];
-  contacts?: { name: string; role: string; phone?: string }[];
+  contacts?: { name: string; role: string; phone?: string }[]; // ancien format, recopié dans `contacts`
+  contactsMoved?: boolean; // vrai une fois les anciens contacts recopiés dans `contacts`
+};
+
+/** Contact de la famille (pédiatre, nounou, mamie…), rattaché à une ou plusieurs personnes. */
+export type Contact = {
+  id: string;
+  name: string;
+  role?: string; // lien : pédiatre, crèche, grand-mère, cousine…
+  memberIds: string[]; // personnes de la famille concernées
+  phone?: string;
+  email?: string;
+  address?: string;
+  notes?: string;
+  birthday?: string; // MM-JJ, pour l'ajouter aux anniversaires
+  birthYear?: number; // facultatif : année de naissance si on la connaît
+  createdAt: number;
 };
 
 export type CalendarFeed = {
