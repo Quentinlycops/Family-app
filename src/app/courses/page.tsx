@@ -1,10 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
-import { deleteDoc, doc, increment, onSnapshot, setDoc, updateDoc, writeBatch } from "firebase/firestore";
+import { useEffect, useRef, useState } from "react";
+import { deleteDoc, deleteField, doc, increment, onSnapshot, setDoc, updateDoc, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useFamily } from "@/lib/family";
 import { useCollection } from "@/lib/useCollection";
-import { addShoppingItems, AISLES } from "@/lib/shopping";
+import { addShoppingItems } from "@/lib/shopping";
 import { normalize } from "@/lib/search";
 import { today } from "@/lib/dates";
 
@@ -16,6 +16,13 @@ export default function CoursesPage() {
   const { items } = useCollection<ShoppingItem>("shopping");
   const [text, setText] = useState("");
   const [stats, setStats] = useState<Stats>({});
+  // Glisser-déposer : ordre provisoire pendant qu'on déplace un article.
+  const [dragIds, setDragIds] = useState<string[] | null>(null);
+  const [dragId, setDragId] = useState<string | null>(null);
+  const listRef = useRef<HTMLUListElement>(null);
+  // Note en cours d'écriture (petit stylo).
+  const [editing, setEditing] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
   const fid = family?.id;
   useEffect(() => {
     if (!fid) return;
@@ -57,10 +64,53 @@ export default function CoursesPage() {
     .slice(0, 12)
     .map(([, v]) => v);
 
-  const byAisle = AISLES.map((a) => ({
-    aisle: a,
-    list: open.filter((i) => i.aisle === a).sort((x, y) => x.name.localeCompare(y.name)),
-  })).filter((g) => g.list.length);
+  const sorted = [...open].sort((x, y) => (x.order ?? x.createdAt) - (y.order ?? y.createdAt));
+  const byId = new Map(sorted.map((i) => [i.id, i]));
+  const shown = dragIds ? dragIds.map((id) => byId.get(id)).filter((i): i is ShoppingItem => !!i) : sorted;
+
+  function startDrag(e: React.PointerEvent, id: string) {
+    e.preventDefault();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    setDragId(id);
+    setDragIds(sorted.map((i) => i.id));
+  }
+
+  function moveDrag(e: React.PointerEvent) {
+    if (!dragId || !dragIds || !listRef.current) return;
+    // On place l'article selon la position du doigt par rapport au milieu des autres lignes.
+    const rows = [...listRef.current.querySelectorAll<HTMLElement>("li[data-id]")].filter((r) => r.dataset.id !== dragId);
+    let index = rows.length;
+    for (let k = 0; k < rows.length; k++) {
+      const r = rows[k].getBoundingClientRect();
+      if (e.clientY < r.top + r.height / 2) { index = k; break; }
+    }
+    const next = dragIds.filter((id) => id !== dragId);
+    next.splice(index, 0, dragId);
+    if (next.some((id, k) => id !== dragIds[k])) setDragIds(next);
+  }
+
+  async function endDrag() {
+    if (!dragIds) return;
+    const finalIds = dragIds;
+    const batch = writeBatch(db);
+    let changed = false;
+    finalIds.forEach((id, k) => {
+      if (byId.get(id)?.order !== k) { batch.update(ref(id), { order: k }); changed = true; }
+    });
+    setDragId(null);
+    if (changed) await batch.commit();
+    setDragIds(null);
+  }
+
+  function openNote(i: ShoppingItem) {
+    setEditing(i.id);
+    setDraft(i.note ?? "");
+  }
+
+  async function saveNote(id: string) {
+    setEditing(null);
+    await updateDoc(ref(id), { note: draft.trim() || deleteField() });
+  }
 
   return (
     <div className="space-y-4">
@@ -85,27 +135,44 @@ export default function CoursesPage() {
           </div>
         </div>
       )}
-      {byAisle.length === 0 && <p className="card text-center text-sm text-stone-400">La liste est vide.</p>}
-      {byAisle.map((g) => (
-        <section key={g.aisle} className="card">
-          <h2 className="mb-1 text-sm font-semibold uppercase tracking-wide text-teal-800">{g.aisle}</h2>
-          <ul>
-            {g.list.map((i) => (
-              <li key={i.id} className="flex items-center gap-3 py-1.5">
-                <input type="checkbox" className="h-6 w-6 accent-teal-700" checked={false}
+      {shown.length === 0 && <p className="card text-center text-sm text-stone-400">La liste est vide.</p>}
+      {shown.length > 0 && (
+        <section className="card py-2">
+          <ul ref={listRef}>
+            {shown.map((i) => (
+              <li key={i.id} data-id={i.id}
+                className={`flex items-start gap-2 border-b border-stone-100 py-2 last:border-0 ${dragId === i.id ? "rounded-xl bg-teal-50 shadow-md ring-1 ring-teal-200" : ""}`}>
+                <button type="button" aria-label="Déplacer" title="Glisser pour déplacer"
+                  className="cursor-grab touch-none select-none px-1 pt-0.5 text-xl leading-6 text-stone-400 active:cursor-grabbing"
+                  onPointerDown={(e) => startDrag(e, i.id)} onPointerMove={moveDrag}
+                  onPointerUp={endDrag} onPointerCancel={endDrag}>⠿</button>
+                <input type="checkbox" className="mt-0.5 h-6 w-6 shrink-0 accent-teal-700" checked={false}
                   onChange={() => check(i)} />
-                <span className="flex-1">{i.name}{i.quantity && <span className="text-stone-500"> · {i.quantity}</span>}</span>
-                <select className="max-w-28 bg-transparent text-xs text-stone-400" value={i.aisle}
-                  onChange={(e) => updateDoc(ref(i.id), { aisle: e.target.value })} aria-label="Rayon">
-                  {AISLES.map((a) => <option key={a}>{a}</option>)}
-                </select>
-                <button className="text-stone-400 hover:text-red-600" aria-label="Supprimer"
+                <div className="min-w-0 flex-1">
+                  <span className="leading-7">{i.name}{i.quantity && <span className="text-stone-500"> · {i.quantity}</span>}</span>
+                  {editing === i.id ? (
+                    <input autoFocus className="input mt-1 py-1 text-sm" placeholder="Une note (marque, taille…)"
+                      value={draft} onChange={(e) => setDraft(e.target.value)}
+                      onBlur={() => saveNote(i.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") e.currentTarget.blur();
+                        if (e.key === "Escape") setEditing(null);
+                      }} />
+                  ) : i.note ? (
+                    <p className="cursor-text text-sm text-stone-500" onClick={() => openNote(i)}>📝 {i.note}</p>
+                  ) : null}
+                </div>
+                <button type="button" aria-label="Note" title="Ajouter une note"
+                  className={`px-1 pt-0.5 text-lg leading-6 ${i.note ? "text-teal-700" : "text-stone-400"} hover:text-teal-700`}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => (editing === i.id ? saveNote(i.id) : openNote(i))}>✎</button>
+                <button type="button" className="px-1 pt-0.5 text-xl leading-6 text-stone-400 hover:text-red-600" aria-label="Supprimer"
                   onClick={() => deleteDoc(ref(i.id))}>×</button>
               </li>
             ))}
           </ul>
         </section>
-      ))}
+      )}
       {checked.length > 0 && (
         <section className="card">
           <div className="mb-1 flex items-center justify-between">
@@ -118,6 +185,7 @@ export default function CoursesPage() {
                 <input type="checkbox" className="h-5 w-5 accent-teal-700" checked
                   onChange={() => updateDoc(ref(i.id), { checked: false })} />
                 <span className="text-stone-400 line-through">{i.name}</span>
+                {i.note && <span className="truncate text-sm text-stone-400">· {i.note}</span>}
               </li>
             ))}
           </ul>

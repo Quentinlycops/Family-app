@@ -48,7 +48,12 @@ export type ShoppingItem = {
   id: string;
   name: string;
   quantity?: string;
-  aisle: string;
+  /** Note libre affichée sous l'article (marque, taille…). */
+  note?: string;
+  /** Position dans la liste, choisie à la main par glisser-déposer. */
+  order?: number;
+  /** Ancien rayon (épicerie, boucherie…), plus utilisé. */
+  aisle?: string;
   checked: boolean;
   createdAt: number;
 };
