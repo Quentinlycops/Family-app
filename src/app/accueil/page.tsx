@@ -6,7 +6,7 @@ import { useFamily } from "@/lib/family";
 import { useCollection } from "@/lib/useCollection";
 import { useEvents } from "@/lib/useEvents";
 import { contactBirthDate, useContacts } from "@/lib/contacts";
-import { fmtLong, fmtShort, nextBirthday, relativeDay, today, upcoming } from "@/lib/dates";
+import { ageLabel, fmtLong, fmtShort, nextBirthday, relativeDay, today, upcoming } from "@/lib/dates";
 import type { MealSlot, Recipe, ShoppingItem, Todo, Trip } from "@/lib/types";
 
 function greeting() {
@@ -58,9 +58,10 @@ export default function AccueilPage() {
 
   // La famille et les anniversaires notés dans les contacts (grands-parents, cousines…).
   const birthdays = [
-    ...family.members.map((m) => ({ key: m.id, name: m.name, color: m.color, knownAge: true, ...nextBirthday(m.birthDate) })),
+    ...family.members.map((m) => ({ key: m.id, name: m.name, color: m.color, ageNow: ageLabel(m.birthDate), ...nextBirthday(m.birthDate) })),
     ...contacts.filter((c) => c.birthday).map((c) => ({
-      key: c.id, name: c.name, color: member(c.memberIds[0])?.color, knownAge: !!c.birthYear, ...nextBirthday(contactBirthDate(c)),
+      key: c.id, name: c.name, color: member(c.memberIds[0])?.color,
+      ageNow: c.birthYear ? ageLabel(contactBirthDate(c)) : undefined, ...nextBirthday(contactBirthDate(c)),
     })),
   ].sort((a, b) => a.days - b.days).slice(0, 8);
 
@@ -187,9 +188,9 @@ export default function AccueilPage() {
 
       <Section title="🎂 Anniversaires" href="/contacts?anniv=1" linkLabel="+ Ajouter">
         <ul className="space-y-1 text-sm">
-          {birthdays.map(({ key, name, color, knownAge, date, age }) => (
+          {birthdays.map(({ key, name, color, ageNow, date }) => (
             <li key={key} className="flex justify-between gap-2">
-              <span><b style={{ color }}>{name}</b>{knownAge ? ` aura ${age} ans` : ""}</span>
+              <span><b style={{ color }}>{name}</b>{ageNow && <span className="text-stone-500"> · {ageNow}</span>}</span>
               <span className={date === now ? "font-semibold text-teal-700" : "text-stone-500"}>
                 {date === now ? "aujourd'hui 🎉" : fmtLong(date).replace(/^\S+ /, "")}
               </span>

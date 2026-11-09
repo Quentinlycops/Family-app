@@ -5,7 +5,7 @@ import { db } from "@/lib/firebase";
 import { useFamily } from "@/lib/family";
 import { familyCol } from "@/lib/useCollection";
 import { clean, contactBirthDate, useContacts } from "@/lib/contacts";
-import { fmtLong, nextBirthday } from "@/lib/dates";
+import { ageLabel, fmtLong, nextBirthday } from "@/lib/dates";
 import { matches } from "@/lib/search";
 import type { Contact } from "@/lib/types";
 import MemberPicker from "@/components/MemberPicker";
@@ -87,7 +87,7 @@ export default function ContactsPage() {
                   {nb && (
                     <span className="chip">
                       🎂 {fmtLong(nb.date).replace(/^\S+ /, "")}
-                      {c.birthYear ? ` · ${nb.age} ans` : ""}
+                      {c.birthYear ? ` · ${ageLabel(contactBirthDate(c))}` : ""}
                       {nb.days === 0 ? " · aujourd'hui 🎉" : nb.days <= 30 ? ` · dans ${nb.days} j` : ""}
                     </span>
                   )}
