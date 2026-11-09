@@ -11,6 +11,7 @@ import Modal from "@/components/Modal";
 import MealHistory from "@/components/MealHistory";
 import { matches, normalize } from "@/lib/search";
 import { similarMeals } from "@/lib/meals";
+import SimilarMeals from "@/components/SimilarMeals";
 
 type KnownMeal = { value: string; label: string };
 
@@ -32,6 +33,8 @@ export default function RepasPage() {
   const [diceHint, setDiceHint] = useState<{ key: string; text: string } | null>(null);
   // Doublons possibles proposés après l'encodage d'un repas (clé `${date}_${slot}`).
   const [dupHint, setDupHint] = useState<{ key: string; typed: string; options: KnownMeal[] } | null>(null);
+  // « clé|texte » pour lequel on a choisi de garder ce qu'on a écrit : on ne le repropose plus.
+  const [kept, setKept] = useState("");
   if (!family) return null;
 
   const days = Array.from({ length: 7 }, (_, i) => toISO(addDays(fromISO(week), i)));
@@ -52,12 +55,18 @@ export default function RepasPage() {
   async function encodeSlot(date: string, slot: "midi" | "soir", typed: string, next: string) {
     const key = `${date}_${slot}`;
     // On enregistre tout de suite ce qui a été écrit, puis on propose les repas qui pourraient être le même.
-    const options = next && !next.startsWith("r:") ? similarMeals(typed, knownMeals()) : [];
-    setDupHint(options.length ? { key, typed, options } : null);
+    showSimilar(key, next && !next.startsWith("r:") ? typed : "");
     await setSlot(date, slot, next);
   }
 
+  function showSimilar(key: string, typed: string) {
+    const options = typed.trim() && kept !== `${key}|${typed.trim()}` ? similarMeals(typed, knownMeals()) : [];
+    setDupHint(options.length ? { key, typed, options } : null);
+  }
+
   async function pickExisting(date: string, slot: "midi" | "soir", m: KnownMeal) {
+    // On quitte d'abord le champ (ce qui enregistre le texte tapé), puis on le remplace par le repas choisi.
+    (document.activeElement as HTMLElement | null)?.blur();
     setDupHint(null);
     await setSlot(date, slot, m.value);
   }
@@ -170,6 +179,7 @@ export default function RepasPage() {
                       placeholder="Choisir ou écrire…"
                       defaultValue={recipe(cur?.recipeId)?.name ?? cur?.text ?? ""}
                       key={value}
+                      onChange={(e) => showSimilar(`${d}_${s}`, e.target.value)}
                       onBlur={(e) => {
                         const v = e.target.value.trim();
                         const r = recipes.find((x) => x.name === v);
@@ -184,21 +194,9 @@ export default function RepasPage() {
                     </p>
                   )}
                   {dup && (
-                    <div className="ml-12 mt-1 rounded-lg bg-teal-50 p-2 text-xs text-teal-800">
-                      <p>Ce repas existe peut-être déjà :</p>
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {dup.options.map((m) => (
-                          <button key={m.value} className="rounded-full bg-surface px-2 py-0.5 shadow-sm"
-                            onClick={() => pickExisting(d, s, m)}>
-                            {m.label}
-                          </button>
-                        ))}
-                        <button className="rounded-full px-2 py-0.5 text-teal-700 underline"
-                          onClick={() => setDupHint(null)}>
-                          Garder « {dup.typed} »
-                        </button>
-                      </div>
-                    </div>
+                    <SimilarMeals className="ml-12 mt-1" typed={dup.typed} options={dup.options}
+                      onPick={(m) => pickExisting(d, s, m)}
+                      onKeep={() => { setKept(`${dup.key}|${dup.typed.trim()}`); setDupHint(null); }} />
                   )}
                   </div>
                 );
