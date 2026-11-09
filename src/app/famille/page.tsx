@@ -1,15 +1,12 @@
 "use client";
 import { useState } from "react";
-import { signOut } from "firebase/auth";
-import { auth } from "@/lib/firebase";
 import { saveMembers, useFamily } from "@/lib/family";
 import { ageLabel, fmtLong } from "@/lib/dates";
 import type { Member } from "@/lib/types";
-import GoogleCalendarSettings from "@/components/GoogleCalendarSettings";
 import Link from "next/link";
 
 export default function FamillePage() {
-  const { family, user, me } = useFamily();
+  const { family } = useFamily();
   const [members, setMembers] = useState<Member[]>(family?.members ?? []);
   const [name, setName] = useState(family?.name ?? "");
   const [copied, setCopied] = useState(false);
@@ -83,14 +80,9 @@ export default function FamillePage() {
         📞 Contacts et anniversaires (grands-parents, cousines…) ›
       </Link>
 
-      <GoogleCalendarSettings />
-
-      <section className="card flex items-center justify-between">
-        <p className="text-sm text-stone-600">
-          Connecté(e) en tant que <b>{me?.name}</b> ({user?.email})
-        </p>
-        <button className="btn-ghost text-sm" onClick={() => signOut(auth)}>Se déconnecter</button>
-      </section>
+      <Link href="/parametres" className="card block font-medium text-teal-700">
+        ⚙️ Paramètres : couleurs et agendas Google ›
+      </Link>
     </div>
   );
 }
