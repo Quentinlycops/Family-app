@@ -7,7 +7,7 @@ import ColorSwatches from "./ColorSwatches";
 import Modal from "./Modal";
 
 /** Chacun choisit la couleur de son agenda (et de ses agendas Google), enregistrée tout de suite. */
-export default function AgendaColors({ onClose }: { onClose: () => void }) {
+export function ColorsEditor() {
   const { family, me } = useFamily();
   const feeds = useCalendarSettings().feeds ?? [];
   if (!family) return null;
@@ -27,28 +27,34 @@ export default function AgendaColors({ onClose }: { onClose: () => void }) {
     }, { merge: true });
 
   return (
+    <div className="space-y-4">
+      {members.map((m) => (
+        <div key={m.id} className="space-y-1.5">
+          <p className="font-medium" style={{ color: m.color }}>
+            {m.name}{m.id === me?.id && <span className="text-xs font-normal text-stone-500"> (toi)</span>}
+          </p>
+          <ColorSwatches value={m.color} onChange={(c) => c && setMemberColor(m.id, c)} />
+        </div>
+      ))}
+      {feeds.length > 0 && (
+        <div className="space-y-4 border-t border-stone-200 pt-4">
+          <p className="text-sm text-stone-500">Agendas Google</p>
+          {feeds.map((f) => (
+            <div key={f.id} className="space-y-1.5">
+              <p className="font-medium">{f.name}</p>
+              <ColorSwatches value={f.color} autoLabel="Couleurs des membres" onChange={(c) => setFeedColor(f.id, c)} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+);
+}
+
+export default function AgendaColors({ onClose }: { onClose: () => void }) {
+  return (
     <Modal title="Couleurs des agendas" onClose={onClose}>
-      <div className="space-y-4">
-        {members.map((m) => (
-          <div key={m.id} className="space-y-1.5">
-            <p className="font-medium" style={{ color: m.color }}>
-              {m.name}{m.id === me?.id && <span className="text-xs font-normal text-stone-500"> (toi)</span>}
-            </p>
-            <ColorSwatches value={m.color} onChange={(c) => c && setMemberColor(m.id, c)} />
-          </div>
-        ))}
-        {feeds.length > 0 && (
-          <div className="space-y-4 border-t border-stone-200 pt-4">
-            <p className="text-sm text-stone-500">Agendas Google</p>
-            {feeds.map((f) => (
-              <div key={f.id} className="space-y-1.5">
-                <p className="font-medium">{f.name}</p>
-                <ColorSwatches value={f.color} autoLabel="Couleurs des membres" onChange={(c) => setFeedColor(f.id, c)} />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+      <ColorsEditor />
     </Modal>
   );
 }

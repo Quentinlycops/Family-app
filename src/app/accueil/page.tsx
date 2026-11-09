@@ -40,15 +40,17 @@ export default function AccueilPage() {
   const now = today();
   // Un événement sur plusieurs jours n'est montré qu'une fois (son premier jour visible).
   const seen = new Set<string>();
-  const next = upcoming(events.filter((e) => !e.birthday), now, 14)
+  const all = upcoming(events.filter((e) => !e.birthday), now, 14)
     .filter(({ ev }) => {
       const key = `${ev.title}|${ev.source ?? ""}|${ev.memberIds.join()}`;
       const spans = !!ev.endDate || (ev.source && !ev.startTime);
       if (spans && seen.has(key)) return false;
       seen.add(key);
       return true;
-    })
-    .slice(0, 8);
+    });
+  // Environ 8 événements, mais un jour affiché l'est toujours en entier.
+  const lastDay = all[Math.min(all.length, 8) - 1]?.date;
+  const next = all.filter((o) => lastDay && o.date <= lastDay);
   const byDay = next.reduce<Record<string, typeof next>>((acc, o) => {
     (acc[o.date] ??= []).push(o);
     return acc;

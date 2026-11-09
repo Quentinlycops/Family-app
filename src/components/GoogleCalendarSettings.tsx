@@ -17,6 +17,7 @@ export default function GoogleCalendarSettings() {
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [picking, setPicking] = useState<string | null>(null);
+  const [editing, setEditing] = useState<{ id: string; name: string; memberIds: string[] } | null>(null);
   if (!family) return null;
   const ref = doc(db, "families", family.id, "settings", "calendars");
   const feeds = settings.feeds ?? [];
@@ -58,6 +59,16 @@ export default function GoogleCalendarSettings() {
       }),
     }, { merge: true });
 
+  async function saveEdit() {
+    if (!editing) return;
+    await setDoc(ref, {
+      feeds: feeds.map((f) => (f.id === editing.id
+        ? { ...f, name: editing.name.trim() || f.name, memberIds: editing.memberIds }
+        : f)),
+    }, { merge: true });
+    setEditing(null);
+  }
+
   async function enableExport() {
     const token = Array.from(crypto.getRandomValues(new Uint8Array(18)), (b) => b.toString(36).padStart(2, "0")).join("").replace(/[^a-z0-9]/g, "");
     await setDoc(ref, { exportToken: token }, { merge: true });
@@ -81,15 +92,29 @@ export default function GoogleCalendarSettings() {
                 className="h-6 w-6 shrink-0 rounded-full border-2 border-white shadow"
                 style={{ background: f.color ?? "conic-gradient(#e11d48,#2563eb,#9333ea,#f59e0b,#e11d48)" }} />
               <span className="flex-1"><b>{f.name}</b> <span className="text-stone-500">· {f.memberIds.map((id) => family.members.find((m) => m.id === id)?.name).join(", ")}</span></span>
+              <button className="text-stone-400 hover:text-teal-700" title="Modifier" aria-label={`Modifier ${f.name}`}
+                onClick={() => setEditing(editing?.id === f.id ? null : { id: f.id, name: f.name, memberIds: f.memberIds })}>✏️</button>
               <button className="text-stone-400 hover:text-red-600" onClick={() => remove(f.id)} aria-label="Retirer">×</button>
             </div>
+            {editing?.id === f.id && (
+              <div className="space-y-2">
+                <input className="input" value={editing.name} aria-label="Nom affiché"
+                  onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
+                <span className="label">Ces événements concernent :</span>
+                <MemberPicker value={editing.memberIds} onChange={(memberIds) => setEditing({ ...editing, memberIds })} />
+                <div className="flex justify-end gap-2">
+                  <button className="btn-ghost text-sm" onClick={() => setEditing(null)}>Annuler</button>
+                  <button className="btn" onClick={saveEdit}>Enregistrer</button>
+                </div>
+              </div>
+            )}
             {picking === f.id && (
               <ColorSwatches value={f.color} autoLabel="Couleurs des membres"
                 onChange={(c) => { setColor(f.id, c); setPicking(null); }} />
             )}
           </div>
         ))}
-        {feeds.length > 0 && <p className="text-xs text-stone-500">Touche la pastille pour changer la couleur d&apos;un agenda (dans l&apos;app seulement).</p>}
+        {feeds.length > 0 && <p className="text-xs text-stone-500">Touche la pastille pour changer la couleur d&apos;un agenda, ✏️ pour le renommer ou changer qui il concerne.</p>}
         {errors.map((e) => <p key={e} className="text-sm text-red-600">{e}</p>)}
         <details className="text-sm text-stone-600">
           <summary className="cursor-pointer text-teal-700">Où trouver l&apos;adresse secrète ?</summary>
