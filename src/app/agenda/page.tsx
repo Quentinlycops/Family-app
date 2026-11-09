@@ -278,7 +278,9 @@ export default function AgendaPage() {
             <p className="text-stone-500">
               {viewing.ev.source
                 ? `Vient de l'agenda Google « ${viewing.ev.source} » : modifie-le dans Google Agenda.`
-                : "Anniversaire ajouté automatiquement depuis la fiche de la famille."}
+                : viewing.ev.id.startsWith("anniv-c-")
+                  ? "Anniversaire ajouté depuis les contacts : modifie-le dans 📞 Contacts."
+                  : "Anniversaire ajouté automatiquement depuis la fiche de la famille."}
             </p>
           </div>
         </Modal>
