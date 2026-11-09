@@ -5,6 +5,7 @@ import { db } from "@/lib/firebase";
 import { useFamily } from "@/lib/family";
 import { useCollection } from "@/lib/useCollection";
 import { useEvents } from "@/lib/useEvents";
+import { contactBirthDate, useContacts } from "@/lib/contacts";
 import { ageLabel, fmtLong, fmtShort, nextBirthday, relativeDay, today, upcoming } from "@/lib/dates";
 import type { MealSlot, Recipe, ShoppingItem, Todo, Trip } from "@/lib/types";
 
@@ -13,12 +14,12 @@ function greeting() {
   return h < 5 ? "Bonne nuit" : h < 18 ? "Bonjour" : "Bonsoir";
 }
 
-function Section({ title, href, children }: { title: string; href?: string; children: React.ReactNode }) {
+function Section({ title, href, linkLabel = "Tout voir ›", children }: { title: string; href?: string; linkLabel?: string; children: React.ReactNode }) {
   return (
     <section className="card">
       <div className="mb-2 flex items-center justify-between">
         <h2 className="font-semibold">{title}</h2>
-        {href && <Link href={href} className="text-sm text-teal-700">Tout voir ›</Link>}
+        {href && <Link href={href} className="text-sm text-teal-700">{linkLabel}</Link>}
       </div>
       {children}
     </section>
@@ -33,6 +34,7 @@ export default function AccueilPage() {
   const { items: meals } = useCollection<MealSlot>("meals");
   const { items: recipes } = useCollection<Recipe>("recipes");
   const { items: trips } = useCollection<Trip>("trips");
+  const { items: contacts } = useContacts();
 
   if (!family) return null;
   const now = today();
@@ -52,9 +54,13 @@ export default function AccueilPage() {
     return acc;
   }, {});
 
-  const birthdays = family.members
-    .map((m) => ({ m, ...nextBirthday(m.birthDate) }))
-    .sort((a, b) => a.days - b.days);
+  // La famille et les anniversaires notés dans les contacts (grands-parents, cousines…).
+  const birthdays = [
+    ...family.members.map((m) => ({ key: m.id, name: m.name, color: m.color, knownAge: true, ...nextBirthday(m.birthDate) })),
+    ...contacts.filter((c) => c.birthday).map((c) => ({
+      key: c.id, name: c.name, color: member(c.memberIds[0])?.color, knownAge: !!c.birthYear, ...nextBirthday(contactBirthDate(c)),
+    })),
+  ].sort((a, b) => a.days - b.days).slice(0, 8);
 
   const mealToday = (slot: string) => {
     const s = meals.find((x) => x.id === `${now}_${slot}`);
@@ -167,6 +173,17 @@ export default function AccueilPage() {
         <span className="text-stone-400">›</span>
       </Link>
 
+      <Link href="/contacts" className="card flex items-center gap-3">
+        <span className="text-2xl">📞</span>
+        <span className="min-w-0 flex-1">
+          <b className="block">Contacts</b>
+          <span className="block truncate text-sm text-stone-500">
+            {contacts.length ? `${contacts.length} contact${contacts.length > 1 ? "s" : ""} : pédiatre, crèche, famille…` : "Pédiatre, crèche, nounou, grands-parents…"}
+          </span>
+        </span>
+        <span className="text-stone-400">›</span>
+      </Link>
+
       <Section title="Les enfants" href="/enfants">
         <div className="grid grid-cols-2 gap-3">
           {kids.map((k) => (
@@ -183,11 +200,11 @@ export default function AccueilPage() {
         </div>
       </Section>
 
-      <Section title="🎂 Anniversaires">
+      <Section title="🎂 Anniversaires" href="/contacts?anniv=1" linkLabel="+ Ajouter">
         <ul className="space-y-1 text-sm">
-          {birthdays.map(({ m, date, age }) => (
-            <li key={m.id} className="flex justify-between">
-              <span><b style={{ color: m.color }}>{m.name}</b> aura {age} ans</span>
+          {birthdays.map(({ key, name, color, knownAge, date, age }) => (
+            <li key={key} className="flex justify-between gap-2">
+              <span><b style={{ color }}>{name}</b>{knownAge ? ` aura ${age} ans` : ""}</span>
               <span className={date === now ? "font-semibold text-teal-700" : "text-stone-500"}>
                 {date === now ? "aujourd'hui 🎉" : fmtLong(date).replace(/^\S+ /, "")}
               </span>

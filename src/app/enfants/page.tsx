@@ -1,26 +1,60 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { doc, onSnapshot, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useFamily } from "@/lib/family";
+import { useContacts } from "@/lib/contacts";
 import { ageLabel, fmtShort, today } from "@/lib/dates";
-import type { KidProfile, Member, SizeEntry } from "@/lib/types";
+import type { Contact, KidProfile, Member, SizeEntry } from "@/lib/types";
 
 const SIZE_FIELDS = [["clothes", "Vêtements", "4 ans"], ["shoes", "Chaussures", "26"], ["head", "Tour de tête", "50 cm"]] as const;
 
 export default function EnfantsPage() {
   const { family } = useFamily();
+  const { items: contacts } = useContacts();
+  const kids = family?.members.filter((m) => m.role === "enfant") ?? [];
+  // Sur téléphone, une fiche à la fois (on passe de l'une à l'autre) ; sur grand écran, les deux côte à côte.
+  const [sel, setSel] = useState(() => (typeof window === "undefined" ? "" : window.location.hash.slice(1)));
   if (!family) return null;
-  const kids = family.members.filter((m) => m.role === "enfant");
+  const current = kids.some((k) => k.id === sel) ? sel : kids[0]?.id;
+
   return (
-    <div className="space-y-6">
-      <h1 className="text-xl font-semibold">Les enfants</h1>
-      {kids.map((k) => <KidCard key={k.id} kid={k} fid={family.id} />)}
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Les enfants</h1>
+        <Link href="/contacts" className="btn-ghost text-sm">📞 Contacts</Link>
+      </div>
+      <div className="grid grid-cols-2 gap-2 lg:hidden">
+        {kids.map((k) => {
+          const on = k.id === current;
+          return (
+            <button key={k.id} onClick={() => { setSel(k.id); history.replaceState(null, "", `#${k.id}`); }}
+              className="flex items-center gap-2 rounded-2xl border-2 px-3 py-2 text-left"
+              style={{ borderColor: k.color, background: on ? k.color : "transparent", color: on ? "white" : undefined }}>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full font-bold text-white"
+                style={{ background: on ? "rgb(255 255 255 / 0.25)" : k.color }}>{k.name[0]}</span>
+              <span>
+                <b className="block leading-tight">{k.name}</b>
+                <span className={`text-xs ${on ? "text-white/80" : "text-stone-500"}`}>{ageLabel(k.birthDate)}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        {kids.map((k) => (
+          <div key={k.id} className={`rounded-3xl border-t-8 bg-stone-100/60 p-3 sm:p-4 ${k.id === current ? "" : "hidden lg:block"}`}
+            style={{ borderColor: k.color }}>
+            <KidCard kid={k} fid={family.id} contacts={contacts.filter((c) => c.memberIds.includes(k.id))} />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
 
-function KidCard({ kid, fid }: { kid: Member; fid: string }) {
+function KidCard({ kid, fid, contacts }: { kid: Member; fid: string; contacts: Contact[] }) {
   const [p, setP] = useState<KidProfile>({});
   const [loaded, setLoaded] = useState(false);
   const ref = doc(db, "families", fid, "kids", kid.id);
@@ -42,7 +76,6 @@ function KidCard({ kid, fid }: { kid: Member; fid: string }) {
   const [size, setSize] = useState({ date: today(), clothes: "", shoes: "", head: "" });
   const [growth, setGrowth] = useState({ date: today(), weight: "", height: "" });
   const [vaccine, setVaccine] = useState({ name: "", date: today(), nextDue: "" });
-  const [contact, setContact] = useState({ name: "", role: "", phone: "" });
   const num = (s: string) => (s ? Number(s.replace(",", ".")) : undefined);
   // Historique des tailles, du plus récent au plus ancien ; l'ancienne fiche unique y est reprise.
   const legacy = p.sizes && (p.sizes.clothes || p.sizes.shoes || p.sizes.head)
@@ -55,7 +88,7 @@ function KidCard({ kid, fid }: { kid: Member; fid: string }) {
   if (!loaded) return <div className="card text-stone-400">Chargement…</div>;
 
   return (
-    <section id={kid.id} className="scroll-mt-20 space-y-3">
+    <section id={kid.id} className="space-y-3">
       <div className="flex items-center gap-3">
         <span className="flex h-12 w-12 items-center justify-center rounded-full text-xl font-bold text-white" style={{ background: kid.color }}>
           {kid.name[0]}
@@ -193,28 +226,19 @@ function KidCard({ kid, fid }: { kid: Member; fid: string }) {
       </div>
 
       <div className="card">
-        <h3 className="mb-2 font-semibold">📞 Contacts utiles</h3>
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="font-semibold">📞 Contacts</h3>
+          <Link href={`/contacts?pour=${kid.id}`} className="text-sm text-teal-700">Gérer ›</Link>
+        </div>
+        {contacts.length === 0 && <p className="text-sm text-stone-400">Aucun contact pour {kid.name}.</p>}
         <ul className="divide-y divide-stone-100 text-sm">
-          {(p.contacts ?? []).map((c, i) => (
-            <li key={i} className="flex items-center gap-2 py-1.5">
-              <span className="flex-1"><b>{c.name}</b> <span className="text-stone-500">· {c.role}</span></span>
-              {c.phone && <a className="text-teal-700" href={`tel:${c.phone.replace(/\s/g, "")}`}>{c.phone}</a>}
-              <button className="text-stone-400 hover:text-red-600" aria-label="Supprimer"
-                onClick={() => save({ contacts: p.contacts!.filter((_, j) => j !== i) })}>×</button>
+          {[...contacts].sort((x, y) => x.name.localeCompare(y.name)).map((c) => (
+            <li key={c.id} className="flex items-center gap-2 py-1.5">
+              <span className="min-w-0 flex-1 truncate"><b>{c.name}</b>{c.role && <span className="text-stone-500"> · {c.role}</span>}</span>
+              {c.phone && <a className="shrink-0 text-teal-700" href={`tel:${c.phone.replace(/\s/g, "")}`}>{c.phone}</a>}
             </li>
           ))}
         </ul>
-        <form className="mt-2 grid grid-cols-2 gap-2" onSubmit={(e) => {
-          e.preventDefault();
-          if (!contact.name.trim()) return;
-          save({ contacts: [...(p.contacts ?? []), { ...contact, name: contact.name.trim() }] });
-          setContact({ name: "", role: "", phone: "" });
-        }}>
-          <input className="input" placeholder="Nom" value={contact.name} onChange={(e) => setContact({ ...contact, name: e.target.value })} />
-          <input className="input" placeholder="Rôle : nounou, crèche…" value={contact.role} onChange={(e) => setContact({ ...contact, role: e.target.value })} />
-          <input className="input" type="tel" placeholder="Téléphone" value={contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })} />
-          <button className="btn">Ajouter</button>
-        </form>
       </div>
     </section>
   );

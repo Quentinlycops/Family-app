@@ -77,7 +77,10 @@ export default function FamillePage() {
       </section>
 
       <Link href="/enfants" className="card block font-medium text-teal-700">
-        👧 Fiches des enfants : santé, vaccins, tailles, contacts ›
+        👧 Fiches des enfants : santé, vaccins, tailles ›
+      </Link>
+      <Link href="/contacts" className="card block font-medium text-teal-700">
+        📞 Contacts et anniversaires (grands-parents, cousines…) ›
       </Link>
 
       <GoogleCalendarSettings />

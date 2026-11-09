@@ -12,6 +12,7 @@ const TABS = [
   { href: "/todo", label: "To-do", icon: "✅" },
   { href: "/courses", label: "Courses", icon: "🛒" },
   { href: "/repas", label: "Repas", icon: "🍽️" },
+  { href: "/enfants", label: "Enfants", icon: "👧" },
 ];
 
 export default function AppShell({ children }: { children: ReactNode }) {
@@ -23,8 +24,8 @@ export default function AppShell({ children }: { children: ReactNode }) {
   if (!user) return <Login />;
   if (!family) return <FamilySetup />;
 
-  // L'agenda profite de toute la largeur de l'écran.
-  const width = path.startsWith("/agenda") ? "max-w-[1600px]" : "max-w-3xl";
+  // L'agenda et les deux fiches enfants côte à côte profitent de toute la largeur de l'écran.
+  const width = path.startsWith("/agenda") ? "max-w-[1600px]" : path.startsWith("/enfants") ? "max-w-6xl" : "max-w-3xl";
 
   return (
     <div className={`mx-auto flex min-h-screen w-full ${width} flex-col`}>
@@ -51,7 +52,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       </header>
       <main className="flex-1 px-3 pb-28 pt-4 sm:px-4 lg:px-6">{children}</main>
       <nav className="fixed inset-x-0 bottom-0 z-10 border-t border-stone-200 bg-surface pb-[env(safe-area-inset-bottom)]">
-        <div className="mx-auto grid max-w-3xl grid-cols-5">
+        <div className="mx-auto grid max-w-3xl grid-cols-6">
           {TABS.map((t) => {
             const active = path.startsWith(t.href);
             return (
