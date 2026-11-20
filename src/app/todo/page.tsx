@@ -7,6 +7,7 @@ import { familyCol, useCollection } from "@/lib/useCollection";
 import { fmtShort, today } from "@/lib/dates";
 import type { Todo } from "@/lib/types";
 import MemberPicker from "@/components/MemberPicker";
+import PageHeader from "@/components/PageHeader";
 
 export default function TodoPage() {
   const { family, member } = useFamily();
@@ -62,7 +63,7 @@ export default function TodoPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">To-do</h1>
+      <PageHeader subtitle={open.length ? `${open.length} tâche${open.length > 1 ? "s" : ""} en cours` : "Tout est fait 🎉"} />
       <form onSubmit={add} className="card space-y-3">
         <input className="input" placeholder="Nouvelle tâche…" value={title} onChange={(e) => setTitle(e.target.value)} />
         <div className="flex flex-wrap items-center gap-2">

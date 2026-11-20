@@ -11,6 +11,7 @@ import { dataUrlToObjectUrl, prepareFile } from "@/lib/files";
 import type { Trip, TripDoc, TripDocKind, TripExpense } from "@/lib/types";
 import Modal from "@/components/Modal";
 import MemberPicker from "@/components/MemberPicker";
+import PageHeader from "@/components/PageHeader";
 
 const KINDS: Record<TripDocKind, { label: string; icon: string }> = {
   avion: { label: "Avion", icon: "✈️" },
@@ -59,10 +60,9 @@ export default function VoyagesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Voyages</h1>
-        <button className="btn" onClick={() => setCreating(true)}>+ Nouveau voyage</button>
-      </div>
+      <PageHeader subtitle="Billets, hébergement et infos pratiques">
+        <button className="btn" onClick={() => setCreating(true)}>+ Nouveau</button>
+      </PageHeader>
 
       {!loading && trips.length === 0 && (
         <div className="card text-center text-stone-500">

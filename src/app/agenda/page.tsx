@@ -123,14 +123,14 @@ export default function AgendaPage() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-1">
           <button className="btn-ghost px-2 text-xl" onClick={() => move(-1)} aria-label="Précédent">‹</button>
-          <h1 className="min-w-0 text-lg font-semibold first-letter:uppercase sm:text-xl">{title}</h1>
+          <h1 className="min-w-0 text-xl font-extrabold tracking-tight first-letter:uppercase sm:text-2xl">{title}</h1>
           <button className="btn-ghost px-2 text-xl" onClick={() => move(1)} aria-label="Suivant">›</button>
           <button className="btn-ghost ml-1 text-sm" onClick={() => setSelected(now)}>Aujourd&apos;hui</button>
         </div>
-        <div className="flex rounded-xl bg-stone-200/70 p-1 text-sm">
+        <div className="flex rounded-full bg-stone-100 p-1 text-sm font-bold">
           {(["mois", "semaine", "liste"] as const).map((v) => (
             <button key={v} onClick={() => setView(v)}
-              className={`rounded-lg px-3 py-1 capitalize ${view === v ? "bg-surface shadow" : "text-stone-600"}`}>
+              className={`rounded-full px-3.5 py-1.5 capitalize transition ${view === v ? "bg-surface shadow-sm" : "text-stone-500"}`}>
               {v}
             </button>
           ))}
@@ -150,12 +150,12 @@ export default function AgendaPage() {
           );
         })}
         <button onClick={() => setColorsOpen(true)} title="Changer les couleurs"
-          className="rounded-full border-2 border-stone-200 px-2.5 py-0.5 text-sm text-stone-600">🎨 Couleurs</button>
+          className="rounded-full border-2 border-stone-200 px-2.5 py-0.5 text-sm font-semibold text-stone-600">🎨 Couleurs</button>
       </div>
 
       {view === "mois" && (
         <>
-          <div className="overflow-hidden rounded-2xl bg-surface ring-1 ring-stone-200">
+          <div className="overflow-hidden rounded-3xl bg-surface shadow-[0_4px_16px_rgba(60,40,20,0.05)] ring-1 ring-stone-200/60">
             <div className="grid grid-cols-7 border-b border-stone-200 text-center text-[11px] font-semibold uppercase text-stone-400">
               {WEEKDAYS.map((d) => <div key={d} className="py-1.5">{d}</div>)}
             </div>
@@ -251,7 +251,7 @@ export default function AgendaPage() {
       })()}
 
       <button onClick={() => setEditing("new")}
-        className="fixed bottom-24 right-5 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-brand text-3xl text-white shadow-lg hover:bg-brand-dark"
+        className="fixed bottom-28 right-5 z-20 flex h-14 w-14 items-center justify-center rounded-full bg-brand text-3xl text-white shadow-lg shadow-teal-600/30 transition hover:bg-brand-dark active:scale-90 lg:bottom-8 lg:right-8"
         aria-label="Ajouter un événement">+</button>
 
       {editing && (

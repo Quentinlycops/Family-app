@@ -5,6 +5,7 @@ import { auth } from "@/lib/firebase";
 import { useFamily } from "@/lib/family";
 import { ColorsEditor } from "@/components/AgendaColors";
 import GoogleCalendarSettings from "@/components/GoogleCalendarSettings";
+import PageHeader from "@/components/PageHeader";
 
 export default function ParametresPage() {
   const { family, user, me } = useFamily();
@@ -12,7 +13,7 @@ export default function ParametresPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">⚙️ Paramètres</h1>
+      <PageHeader subtitle="Couleurs, agendas Google et compte" />
 
       <section className="card space-y-3">
         <div>

@@ -12,6 +12,7 @@ import MealHistory from "@/components/MealHistory";
 import { matches, normalize } from "@/lib/search";
 import { similarMeals } from "@/lib/meals";
 import SimilarMeals from "@/components/SimilarMeals";
+import PageHeader from "@/components/PageHeader";
 
 type KnownMeal = { value: string; label: string };
 
@@ -146,12 +147,12 @@ export default function RepasPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Repas</h1>
-        <div className="flex rounded-xl bg-stone-200/70 p-1 text-sm">
+      <PageHeader />
+      <div className="flex">
+        <div className="flex flex-1 rounded-full bg-stone-100 p-1 text-sm font-bold sm:flex-none">
           {(["semaine", "historique", "recettes"] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)}
-              className={`rounded-lg px-3 py-1 capitalize ${tab === t ? "bg-surface shadow" : "text-stone-600"}`}>
+              className={`flex-1 rounded-full px-4 py-1.5 transition ${tab === t ? "bg-surface shadow-sm" : "text-stone-500"}`}>
               {t === "semaine" ? "Planning" : t === "historique" ? "Historique" : "Recettes"}
             </button>
           ))}
