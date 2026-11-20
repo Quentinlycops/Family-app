@@ -72,9 +72,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
         <main key={path} className="page-in flex-1 px-4 pb-32 pt-3 lg:px-8 lg:pb-12 lg:pt-8">{children}</main>
       </div>
 
-      {/* Téléphone : barre du bas, 4 onglets + « Plus ». */}
+      {/* Téléphone : barre du bas, 5 onglets + « Plus ». */}
       <nav className="fixed inset-x-0 bottom-0 z-20 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:hidden">
-        <div className="mx-auto grid max-w-md grid-cols-5 rounded-[1.75rem] bg-surface/95 p-1.5 shadow-[0_8px_30px_rgba(0,0,0,0.12)] ring-1 ring-stone-200/70 backdrop-blur-md">
+        <div className="mx-auto grid max-w-md grid-cols-6 rounded-[1.75rem] bg-surface/95 p-1.5 shadow-[0_8px_30px_rgba(0,0,0,0.12)] ring-1 ring-stone-200/70 backdrop-blur-md">
           {tabs.map((t) => {
             const active = path.startsWith(t.href);
             return (
