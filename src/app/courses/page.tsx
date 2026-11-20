@@ -10,6 +10,7 @@ import { today } from "@/lib/dates";
 
 type Stats = Record<string, { name: string; count: number; last: string }>;
 import type { ShoppingItem } from "@/lib/types";
+import PageHeader from "@/components/PageHeader";
 
 export default function CoursesPage() {
   const { family } = useFamily();
@@ -114,10 +115,7 @@ export default function CoursesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-baseline justify-between">
-        <h1 className="text-xl font-semibold">Liste de courses</h1>
-        <span className="text-sm text-stone-500">{open.length} article{open.length > 1 ? "s" : ""}</span>
-      </div>
+      <PageHeader title="Liste de courses" subtitle={`${open.length} article${open.length > 1 ? "s" : ""} à acheter`} />
       <form onSubmit={add} className="flex gap-2">
         <input className="input" placeholder="Lait, pain, couches…" value={text} onChange={(e) => setText(e.target.value)} />
         <button className="btn">Ajouter</button>

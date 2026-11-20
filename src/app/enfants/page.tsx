@@ -6,6 +6,7 @@ import { useFamily } from "@/lib/family";
 import { ageLabel, fmtShort, fromISO, today } from "@/lib/dates";
 import Modal from "@/components/Modal";
 import type { KidProfile, Member, SizeEntry } from "@/lib/types";
+import PageHeader from "@/components/PageHeader";
 
 const SIZE_FIELDS = [["clothes", "Vêtements", "4 ans"], ["shoes", "Chaussures", "26"], ["head", "Tour de tête", "50 cm"]] as const;
 
@@ -19,7 +20,7 @@ export default function EnfantsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Les enfants</h1>
+      <PageHeader title="Les enfants" subtitle="Santé, vaccins, tailles et courbes" />
       <div className="grid grid-cols-2 gap-2 lg:hidden">
         {kids.map((k) => {
           const on = k.id === current;

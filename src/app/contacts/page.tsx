@@ -10,6 +10,7 @@ import { matches } from "@/lib/search";
 import type { Contact } from "@/lib/types";
 import MemberPicker from "@/components/MemberPicker";
 import Modal from "@/components/Modal";
+import PageHeader from "@/components/PageHeader";
 
 type Editing = { contact?: Contact; birthdayFirst?: boolean; memberIds?: string[] };
 
@@ -49,13 +50,10 @@ export default function ContactsPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold">📞 Contacts</h1>
-        <div className="flex gap-2">
-          <button className="btn-ghost text-sm" onClick={() => setEditing({ birthdayFirst: true })}>🎂 + Anniversaire</button>
-          <button className="btn" onClick={() => setEditing({ memberIds: filter && filter !== "anniv" ? [filter] : [] })}>+ Contact</button>
-        </div>
-      </div>
+      <PageHeader subtitle="Pédiatre, crèche, famille et anniversaires">
+        <button className="btn-ghost text-sm" onClick={() => setEditing({ birthdayFirst: true })}>🎂 + Anniv.</button>
+        <button className="btn" onClick={() => setEditing({ memberIds: filter && filter !== "anniv" ? [filter] : [] })}>+ Contact</button>
+      </PageHeader>
 
       <input className="input" type="search" placeholder="🔍 Rechercher : pédiatre, mamie, crèche…" value={q} onChange={(e) => setQ(e.target.value)} />
       <div className="flex flex-wrap gap-2">

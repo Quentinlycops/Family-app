@@ -1,30 +1,48 @@
 @import "tailwindcss";
 
+/*
+ * Palette : fond crème chaleureux, accent violet joyeux.
+ * L'échelle « teal » sert d'accent partout dans l'app : on la redéfinit ici en violet,
+ * ce qui recolore tout d'un coup sans toucher aux pages.
+ */
 @theme {
   --color-surface: #ffffff;
-  --color-brand: #0f766e;
-  --color-brand-dark: #115e59;
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --color-brand: #6248e0;
+  --color-brand-dark: #4f37c4;
+  --color-stone-50: #faf7f2;
+  --color-stone-100: #f3eee7;
+  --color-stone-200: #e8e2d9;
+  --color-teal-50: #f3f0ff;
+  --color-teal-100: #e8e2ff;
+  --color-teal-200: #d3c9ff;
+  --color-teal-300: #b5a6ff;
+  --color-teal-500: #7c66f0;
+  --color-teal-600: #6a52e6;
+  --color-teal-700: #5a40d6;
+  --color-teal-800: #4630ae;
+  --font-sans: var(--font-nunito), ui-rounded, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 /* Mode sombre : on inverse les échelles neutres et la teinte d'accent utilisée pour le texte. */
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-surface: #1c1917;
-    --color-stone-50: #0c0a09;
-    --color-stone-100: #292524;
-    --color-stone-200: #3a3532;
-    --color-stone-300: #57534e;
-    --color-stone-400: #8a837d;
-    --color-stone-500: #a8a29e;
-    --color-stone-600: #d6d3d1;
-    --color-stone-700: #e7e5e4;
-    --color-stone-800: #f5f5f4;
-    --color-stone-900: #fafaf9;
-    --color-teal-50: #042f2e;
-    --color-teal-200: #115e59;
-    --color-teal-700: #5eead4;
-    --color-teal-800: #99f6e4;
+    --color-surface: #221f2b;
+    --color-stone-50: #16141c;
+    --color-stone-100: #2c2936;
+    --color-stone-200: #3a3645;
+    --color-stone-300: #565063;
+    --color-stone-400: #8b8497;
+    --color-stone-500: #a9a2b4;
+    --color-stone-600: #d4cfdb;
+    --color-stone-700: #e6e2eb;
+    --color-stone-800: #f4f2f7;
+    --color-stone-900: #faf9fc;
+    --color-teal-50: #2a2350;
+    --color-teal-100: #312a5e;
+    --color-teal-200: #41378a;
+    --color-teal-600: #9584ff;
+    --color-teal-700: #b4a7ff;
+    --color-teal-800: #d2caff;
     --color-red-50: #450a0a;
     --color-red-600: #f87171;
     --color-red-700: #fca5a5;
@@ -33,10 +51,26 @@
 }
 
 @layer components {
-  .card { @apply rounded-2xl bg-surface p-4 shadow-sm ring-1 ring-stone-200; }
-  .input { @apply w-full rounded-xl border border-stone-300 bg-surface px-3 py-2 text-base outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-600/20; }
-  .btn { @apply inline-flex items-center justify-center gap-1 rounded-xl bg-brand px-4 py-2 font-medium text-white hover:bg-brand-dark disabled:opacity-50; }
-  .btn-ghost { @apply inline-flex items-center justify-center gap-1 rounded-xl px-3 py-2 font-medium text-stone-700 hover:bg-stone-100; }
-  .label { @apply mb-1 block text-sm font-medium text-stone-600; }
-  .chip { @apply rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-medium text-stone-600; }
+  .card { @apply rounded-3xl bg-surface p-4 shadow-[0_1px_2px_rgba(60,40,20,0.04),0_4px_16px_rgba(60,40,20,0.05)] ring-1 ring-stone-200/60; }
+  .input { @apply w-full rounded-2xl border border-stone-200 bg-surface px-3.5 py-2.5 text-base outline-none transition focus:border-teal-500 focus:ring-4 focus:ring-teal-500/15; }
+  .btn { @apply inline-flex items-center justify-center gap-1 rounded-full bg-brand px-5 py-2.5 font-bold text-white shadow-sm shadow-teal-600/30 transition hover:bg-brand-dark active:scale-95 disabled:opacity-50; }
+  .btn-ghost { @apply inline-flex items-center justify-center gap-1 rounded-full px-3 py-2 font-semibold text-stone-700 transition hover:bg-stone-100 active:scale-95; }
+  .label { @apply mb-1 block text-sm font-semibold text-stone-600; }
+  .chip { @apply rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-semibold text-stone-600; }
 }
+
+/* Petites animations pour que tout paraisse fluide (désactivées si l'appareil le demande). */
+@keyframes page-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes sheet-in { from { transform: translateY(100%); } to { transform: none; } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pop { 0% { transform: scale(1); } 40% { transform: scale(1.25); } 100% { transform: scale(1); } }
+.page-in { animation: page-in 0.25s ease-out; }
+.sheet-in { animation: sheet-in 0.28s cubic-bezier(0.2, 0.9, 0.3, 1); }
+.fade-in { animation: fade-in 0.2s ease-out; }
+.pop { animation: pop 0.3s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .page-in, .sheet-in, .fade-in, .pop { animation: none; }
+}
+
+input[type="checkbox"] { accent-color: var(--color-teal-600); }
+button { cursor: pointer; }

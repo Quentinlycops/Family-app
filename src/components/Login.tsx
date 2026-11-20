@@ -47,7 +47,8 @@ export default function Login() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-4">
-      <h1 className="mb-1 text-center text-3xl font-bold text-teal-800">🏡 Famille</h1>
+      <span className="mx-auto mb-3 flex h-20 w-20 items-center justify-center rounded-[1.75rem] bg-teal-100 text-5xl shadow-sm">🏡</span>
+      <h1 className="mb-1 text-center text-3xl font-extrabold text-teal-800">Famille</h1>
       <p className="mb-8 text-center text-stone-500">
         L&apos;organisation de la maison, à deux.
       </p>

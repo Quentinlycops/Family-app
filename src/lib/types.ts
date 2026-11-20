@@ -187,3 +187,16 @@ export type TripExpense = {
   date: string;
   paidBy: string; // id membre
 };
+
+/** Idée de sortie, en famille ou en couple. */
+export type Outing = {
+  id: string;
+  title: string;
+  kind: "famille" | "couple";
+  address?: string;
+  link?: string; // site, réservation…
+  notes?: string;
+  done: boolean;
+  doneDate?: string; // AAAA-MM-JJ, jour où on l'a cochée
+  createdAt: number;
+};

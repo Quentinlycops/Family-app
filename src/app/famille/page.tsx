@@ -4,6 +4,7 @@ import { saveMembers, useFamily } from "@/lib/family";
 import { ageLabel, fmtLong } from "@/lib/dates";
 import type { Member } from "@/lib/types";
 import Link from "next/link";
+import PageHeader from "@/components/PageHeader";
 
 export default function FamillePage() {
   const { family } = useFamily();
@@ -26,7 +27,7 @@ export default function FamillePage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">La famille</h1>
+      <PageHeader title="La famille" subtitle="Membres, couleurs et invitation" />
 
       {!otherParentLinked && (
         <section className="card space-y-2 bg-teal-50 ring-teal-200">
