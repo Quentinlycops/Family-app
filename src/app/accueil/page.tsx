@@ -98,8 +98,9 @@ export default function AccueilPage() {
   const nextTrip = trips.filter((t) => t.endDate >= now).sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
 
   const ideas = outings.filter((o) => !o.done);
-  const todayCount = (byDay[now] ?? []).length;
-  const nextUp = next.find(({ date, ev }) => date > now || !ev.startTime || ev.startTime >= new Date().toTimeString().slice(0, 5));
+  const todays = byDay[now] ?? [];
+  const later = Object.entries(byDay).filter(([date]) => date !== now);
+  const nextUp = later[0]?.[1][0];
 
   return (
     <div className="space-y-5">
@@ -111,14 +112,25 @@ export default function AccueilPage() {
       {/* Le jour en un coup d'œil. */}
       <Link href="/agenda" className="block overflow-hidden rounded-[2rem] bg-gradient-to-br from-teal-500 to-teal-800 p-5 text-white shadow-lg shadow-teal-600/20 transition active:scale-[0.98] dark:from-[#6a52e6] dark:to-[#3b2a99]">
         <p className="text-sm font-bold uppercase tracking-wider text-white/70">Aujourd&apos;hui</p>
-        <p className="mt-1 text-2xl font-extrabold">
-          {todayCount === 0 ? "Journée tranquille ☀️" : `${todayCount} chose${todayCount > 1 ? "s" : ""} au programme`}
-        </p>
-        {nextUp && (
-          <p className="mt-1 truncate text-white/90">
-            Ensuite : <b>{nextUp.ev.title}</b>
-            {nextUp.date !== now ? ` · ${relativeDay(nextUp.date).toLowerCase()}` : nextUp.ev.startTime ? ` à ${nextUp.ev.startTime}` : ""}
+        {todays.length === 0 ? (
+          <p className="mt-1 text-white/90">
+            Rien de prévu.
+            {nextUp && <> Prochain : <b>{nextUp.ev.title}</b> · {relativeDay(nextUp.date).toLowerCase()}{nextUp.ev.startTime && ` à ${nextUp.ev.startTime}`}</>}
           </p>
+        ) : (
+          <ul className="mt-2 space-y-1.5">
+            {todays.map(({ ev }) => (
+              <li key={ev.id} className="flex items-baseline gap-3">
+                <span className="w-12 shrink-0 text-sm font-bold text-white/70">{ev.startTime ?? "Journée"}</span>
+                <span className="min-w-0 flex-1 truncate text-lg font-extrabold leading-snug">
+                  {ev.title}
+                  {ev.memberIds.length > 0 && (
+                    <span className="text-sm font-semibold text-white/70"> · {ev.memberIds.map((id) => member(id)?.name).filter(Boolean).join(", ")}</span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
         )}
         <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
           <span className="truncate rounded-2xl bg-white/15 px-3 py-2"><span className="text-white/70">🍝 Midi · </span>{mealToday("midi") ?? "à définir"}</span>
@@ -134,10 +146,10 @@ export default function AccueilPage() {
           small={nextTrip ? (nextTrip.startDate <= now ? "en cours" : `départ ${relativeDay(nextTrip.startDate).toLowerCase()}`) : "Aucun voyage prévu"} />
       </div>
 
-      <Section title="Prochains événements" href="/agenda">
-        {next.length === 0 && <p className="py-2 text-sm text-stone-400">Rien de prévu ces deux prochaines semaines.</p>}
+      <Section title="À venir" href="/agenda">
+        {later.length === 0 && <p className="py-2 text-sm text-stone-400">Rien de prévu ces deux prochaines semaines.</p>}
         <div className="space-y-4">
-          {Object.entries(byDay).map(([date, list]) => {
+          {later.map(([date, list]) => {
             const rel = relativeDay(date);
             const named = rel === "Aujourd'hui" || rel === "Demain";
             return (

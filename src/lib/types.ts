@@ -192,7 +192,7 @@ export type TripExpense = {
 export type Outing = {
   id: string;
   title: string;
-  kind: "famille" | "couple";
+  kind: "famille" | "couple" | "deux"; // « deux » : aussi bien en famille qu'en couple
   address?: string;
   link?: string; // site, réservation…
   notes?: string;

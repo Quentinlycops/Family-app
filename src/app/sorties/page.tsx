@@ -11,10 +11,13 @@ import PageHeader from "@/components/PageHeader";
 import Modal from "@/components/Modal";
 
 type Kind = Outing["kind"];
-const KINDS: Record<Kind, { label: string; emoji: string; soft: string; strong: string }> = {
-  famille: { label: "En famille", emoji: "👨‍👩‍👧‍👧", soft: "#fef3c7", strong: "#b45309" },
-  couple: { label: "En couple", emoji: "💑", soft: "#fce7f3", strong: "#be185d" },
+const KINDS: Record<Kind, { label: string; short: string; emoji: string; soft: string; strong: string }> = {
+  famille: { label: "En famille", short: "Famille", emoji: "👨‍👩‍👧‍👧", soft: "#fef3c7", strong: "#b45309" },
+  couple: { label: "En couple", short: "Couple", emoji: "💑", soft: "#fce7f3", strong: "#be185d" },
+  deux: { label: "Famille ou couple", short: "Les deux", emoji: "💛", soft: "#ede9fe", strong: "#6d28d9" },
 };
+/** Une idée « les deux » apparaît aussi bien dans le filtre Famille que dans le filtre Couple. */
+const matches = (o: Outing, k: Kind | "") => !k || o.kind === k || o.kind === "deux";
 
 const mapsUrl = (address: string) =>
   `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
@@ -23,7 +26,7 @@ const withScheme = (url: string) => (/^https?:\/\//i.test(url) ? url : `https://
 export default function SortiesPage() {
   const { family } = useFamily();
   const { items, loading } = useCollection<Outing>("outings");
-  const [filter, setFilter] = useState<Kind | "">("");
+  const [filter, setFilter] = useState<"famille" | "couple" | "">("");
   const [title, setTitle] = useState("");
   const [kind, setKind] = useState<Kind>("famille");
   const [editing, setEditing] = useState<Outing | null>(null);
@@ -47,11 +50,11 @@ export default function SortiesPage() {
 
   const needle = normalize(q.trim());
   const list = items
-    .filter((o) => !filter || o.kind === filter)
+    .filter((o) => matches(o, filter))
     .filter((o) => !needle || normalize(`${o.title} ${o.address ?? ""} ${o.notes ?? ""}`).includes(needle));
   const todo = list.filter((o) => !o.done).sort((a, b) => b.createdAt - a.createdAt);
   const done = list.filter((o) => o.done).sort((a, b) => (b.doneDate ?? "").localeCompare(a.doneDate ?? ""));
-  const count = (k: Kind | "") => items.filter((o) => !o.done && (!k || o.kind === k)).length;
+  const count = (k: Kind | "") => items.filter((o) => !o.done && matches(o, k)).length;
 
   // « On fait quoi ? » : une idée au hasard parmi celles pas encore faites.
   function surprise() {
@@ -63,7 +66,7 @@ export default function SortiesPage() {
   }
 
   const card = (o: Outing) => {
-    const k = KINDS[o.kind];
+    const k = KINDS[o.kind] ?? KINDS.famille;
     const isPicked = picked === o.id && !o.done;
     return (
       <li key={o.id} id={`sortie-${o.id}`}
@@ -112,7 +115,7 @@ export default function SortiesPage() {
               <button key={key} type="button" onClick={() => setKind(key)}
                 className="rounded-full border-2 px-3 py-1.5 text-sm font-bold transition active:scale-95"
                 style={{ borderColor: on ? k.strong : "transparent", background: k.soft, color: k.strong }}>
-                {k.emoji} {key === "famille" ? "Famille" : "Couple"}
+                {k.emoji} {k.short}
               </button>
             );
           })}
@@ -191,9 +194,9 @@ function OutingForm({ outing, onClose, onSave, onDelete }: {
             const on = f.kind === key;
             return (
               <button key={key} type="button" onClick={() => set({ kind: key })}
-                className="flex-1 rounded-2xl border-2 px-3 py-2 text-sm font-bold transition active:scale-95"
+                className="flex-1 rounded-2xl border-2 px-2 py-2 text-sm font-bold transition active:scale-95"
                 style={{ borderColor: on ? k.strong : "transparent", background: k.soft, color: k.strong }}>
-                {k.emoji} {k.label}
+                {k.emoji} {k.short}
               </button>
             );
           })}
