@@ -25,5 +25,5 @@ export const SPACES: Space[] = [
 
 export const space = (href: string) => SPACES.find((s) => href.startsWith(s.href));
 
-/** Onglets de la barre du bas sur téléphone ; le reste est dans « Plus ». */
-export const MAIN_TABS = ["/accueil", "/agenda", "/courses", "/repas"];
+/** Onglets de la barre du bas sur téléphone (comme avant la refonte) ; le reste est dans « Plus ». */
+export const MAIN_TABS = ["/accueil", "/agenda", "/courses", "/repas", "/enfants"];
