@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
-import { deleteDoc, deleteField, doc, increment, onSnapshot, setDoc, updateDoc, writeBatch } from "firebase/firestore";
+import { useRef, useState } from "react";
+import { deleteDoc, deleteField, doc, increment, setDoc, updateDoc, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useFamily } from "@/lib/family";
 import { useCollection } from "@/lib/useCollection";
@@ -8,7 +8,6 @@ import { addShoppingItems } from "@/lib/shopping";
 import { normalize } from "@/lib/search";
 import { today } from "@/lib/dates";
 
-type Stats = Record<string, { name: string; count: number; last: string }>;
 import type { ShoppingItem } from "@/lib/types";
 import PageHeader from "@/components/PageHeader";
 
@@ -16,7 +15,6 @@ export default function CoursesPage() {
   const { family } = useFamily();
   const { items } = useCollection<ShoppingItem>("shopping");
   const [text, setText] = useState("");
-  const [stats, setStats] = useState<Stats>({});
   // Glisser-déposer : ordre provisoire pendant qu'on déplace un article.
   const [dragIds, setDragIds] = useState<string[] | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
@@ -24,17 +22,10 @@ export default function CoursesPage() {
   // Note en cours d'écriture (petit stylo).
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
-  const fid = family?.id;
-  useEffect(() => {
-    if (!fid) return;
-    return onSnapshot(doc(db, "families", fid, "settings", "shoppingStats"), (s) =>
-      setStats((s.data()?.items as Stats) ?? {}),
-    );
-  }, [fid]);
   if (!family) return null;
   const statsRef = doc(db, "families", family.id, "settings", "shoppingStats");
 
-  // Chaque article coché est compté : c'est la base des suggestions « habituels ».
+  // Chaque article coché est compté (statistiques gardées, plus affichées).
   async function check(i: ShoppingItem) {
     await updateDoc(ref(i.id), { checked: true });
     await setDoc(statsRef, {
@@ -58,12 +49,6 @@ export default function CoursesPage() {
 
   const open = items.filter((i) => !i.checked);
   const checked = items.filter((i) => i.checked);
-  const inList = new Set(items.map((i) => normalize(i.name)));
-  const suggestions = Object.entries(stats)
-    .filter(([k]) => !inList.has(k))
-    .sort(([, a], [, b]) => b.count - a.count || b.last.localeCompare(a.last))
-    .slice(0, 12)
-    .map(([, v]) => v);
 
   const sorted = [...open].sort((x, y) => (x.order ?? x.createdAt) - (y.order ?? y.createdAt));
   const byId = new Map(sorted.map((i) => [i.id, i]));
@@ -120,19 +105,6 @@ export default function CoursesPage() {
         <input className="input" placeholder="Lait, pain, couches…" value={text} onChange={(e) => setText(e.target.value)} />
         <button className="btn">Ajouter</button>
       </form>
-      {suggestions.length > 0 && (
-        <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-stone-400">Vos habituels</p>
-          <div className="flex flex-wrap gap-2">
-            {suggestions.map((s) => (
-              <button key={s.name} onClick={() => addShoppingItems(family.id, [s.name], items.filter((i) => !i.checked).map((i) => i.name))}
-                className="rounded-full border border-stone-300 px-3 py-1 text-sm hover:border-teal-600 hover:text-teal-700">
-                + {s.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
       {shown.length === 0 && <p className="card text-center text-sm text-stone-400">La liste est vide.</p>}
       {shown.length > 0 && (
         <section className="card py-2">

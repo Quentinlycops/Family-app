@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 import { useFamily } from "@/lib/family";
-import { MAIN_TABS, SPACES, space } from "@/lib/spaces";
+import { MAIN_TABS, SPACES } from "@/lib/spaces";
 import Login from "./Login";
 import FamilySetup from "./FamilySetup";
 
@@ -31,7 +31,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
   // L'agenda et les deux fiches enfants côte à côte profitent de toute la largeur de l'écran.
   const width = path.startsWith("/agenda") ? "max-w-[1600px]" : path.startsWith("/enfants") ? "max-w-6xl" : "max-w-3xl";
   const inMore = more.some((s) => path.startsWith(s.href));
-  const current = space(path);
 
   return (
     <div className="min-h-screen lg:flex">
@@ -51,7 +50,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
             </Link>
           );
         })}
-        {me && <p className="mt-auto px-3 pt-4 text-xs text-stone-400">Connecté(e) : {me.name}</p>}
+        {me && (
+          <Link href="/parametres" className="mt-auto flex items-center gap-2 rounded-2xl px-3 py-2 text-sm text-stone-500 hover:bg-stone-100">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white" style={{ background: me.color }}>{me.name.slice(0, 1)}</span>
+            {me.name}
+          </Link>
+        )}
       </aside>
 
       <div className={`mx-auto flex min-h-screen w-full ${width} min-w-0 flex-col`}>
@@ -72,9 +76,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
         <main key={path} className="page-in flex-1 px-4 pb-32 pt-3 lg:px-8 lg:pb-12 lg:pt-8">{children}</main>
       </div>
 
-      {/* Téléphone : barre du bas, 5 onglets + « Plus ». */}
+      {/* Téléphone : barre du bas, 4 onglets + « Plus ». */}
       <nav className="fixed inset-x-0 bottom-0 z-20 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:hidden">
-        <div className="mx-auto grid max-w-md grid-cols-6 rounded-[1.75rem] bg-surface/95 p-1.5 shadow-[0_8px_30px_rgba(0,0,0,0.12)] ring-1 ring-stone-200/70 backdrop-blur-md">
+        <div className="mx-auto grid max-w-md grid-cols-5 rounded-[1.75rem] bg-surface/95 p-1.5 shadow-[0_8px_30px_rgba(0,0,0,0.12)] ring-1 ring-stone-200/70 backdrop-blur-md">
           {tabs.map((t) => {
             const active = path.startsWith(t.href);
             return (
@@ -88,9 +92,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
           })}
           <button onClick={() => setMoreOpen(true)}
             className={`flex flex-col items-center gap-0.5 rounded-3xl py-1.5 text-[11px] font-semibold transition active:scale-90 ${inMore ? "" : "text-stone-500"}`}
-            style={inMore && current ? { background: current.soft, color: current.strong } : undefined}>
-            <span className="text-xl">{inMore && current ? current.emoji : "✨"}</span>
-            {inMore && current ? current.label : "Plus"}
+            style={inMore ? { background: "var(--color-teal-50)", color: "var(--color-teal-700)" } : undefined}>
+            <span className={`text-xl transition ${inMore ? "scale-110" : ""}`}>✨</span>
+            Plus
           </button>
         </div>
       </nav>
