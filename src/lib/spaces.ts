@@ -18,6 +18,7 @@ export const SPACES: Space[] = [
   { href: "/sorties", label: "Sorties", emoji: "🎈", soft: "#fce7f3", strong: "#be185d", hint: "Idées en famille ou à deux" },
   { href: "/voyages", label: "Voyages", emoji: "🧳", soft: "#e0f2fe", strong: "#0369a1", hint: "Billets et hébergement" },
   { href: "/enfants", label: "Enfants", emoji: "🧸", soft: "#fef3c7", strong: "#b45309", hint: "Santé, tailles, courbes" },
+  { href: "/anniversaires", label: "Anniversaires", emoji: "🎂", soft: "#ffe4e6", strong: "#be123c", hint: "Les prochains à fêter" },
   { href: "/contacts", label: "Contacts", emoji: "📞", soft: "#ccfbf1", strong: "#0f766e", hint: "Pédiatre, crèche, famille" },
   { href: "/famille", label: "Famille", emoji: "👨‍👩‍👧‍👧", soft: "#fee2e2", strong: "#b91c1c", hint: "Membres et invitation" },
   { href: "/parametres", label: "Réglages", emoji: "⚙️", soft: "#f5f5f4", strong: "#44403c", hint: "Couleurs, Google Agenda" },
@@ -26,4 +27,4 @@ export const SPACES: Space[] = [
 export const space = (href: string) => SPACES.find((s) => href.startsWith(s.href));
 
 /** Onglets de la barre du bas sur téléphone (comme avant la refonte) ; le reste est dans « Plus ». */
-export const MAIN_TABS = ["/accueil", "/agenda", "/courses", "/repas", "/enfants"];
+export const MAIN_TABS = ["/accueil", "/agenda", "/courses", "/enfants"];

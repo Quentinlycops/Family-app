@@ -23,9 +23,39 @@
   --font-sans: var(--font-nunito), ui-rounded, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
-/* Mode sombre : on inverse les échelles neutres et la teinte d'accent utilisée pour le texte. */
+/*
+ * Mode sombre : on inverse les échelles neutres et la teinte d'accent utilisée pour le texte.
+ * Choix dans les réglages (Automatique / Clair / Sombre) : l'attribut data-theme sur <html> l'emporte
+ * sur le réglage de l'appareil.
+ */
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
+
+:root[data-theme="dark"] {
+    --color-surface: #221f2b;
+    --color-stone-50: #16141c;
+    --color-stone-100: #2c2936;
+    --color-stone-200: #3a3645;
+    --color-stone-300: #565063;
+    --color-stone-400: #8b8497;
+    --color-stone-500: #a9a2b4;
+    --color-stone-600: #d4cfdb;
+    --color-stone-700: #e6e2eb;
+    --color-stone-800: #f4f2f7;
+    --color-stone-900: #faf9fc;
+    --color-teal-50: #2a2350;
+    --color-teal-100: #312a5e;
+    --color-teal-200: #41378a;
+    --color-teal-600: #9584ff;
+    --color-teal-700: #b4a7ff;
+    --color-teal-800: #d2caff;
+    --color-red-50: #450a0a;
+    --color-red-600: #f87171;
+    --color-red-700: #fca5a5;
+    color-scheme: dark;
+  }
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme]) {
     --color-surface: #221f2b;
     --color-stone-50: #16141c;
     --color-stone-100: #2c2936;

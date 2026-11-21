@@ -5,9 +5,8 @@ import { db } from "@/lib/firebase";
 import { useFamily } from "@/lib/family";
 import { useCollection } from "@/lib/useCollection";
 import { useEvents } from "@/lib/useEvents";
-import { contactBirthDate, useContacts } from "@/lib/contacts";
-import { ageLabel, fmtLong, fmtShort, nextBirthday, relativeDay, today, upcoming } from "@/lib/dates";
-import type { MealSlot, Outing, Recipe, ShoppingItem, Todo, Trip } from "@/lib/types";
+import { fmtLong, fmtShort, relativeDay, today, upcoming } from "@/lib/dates";
+import type { Outing, ShoppingItem, Todo, Trip } from "@/lib/types";
 import { space } from "@/lib/spaces";
 
 function greeting() {
@@ -27,18 +26,15 @@ function Section({ title, href, linkLabel = "Tout voir", children }: { title: st
   );
 }
 
-/** Tuile colorée vers un espace, avec un chiffre ou une phrase courte. */
-function Tile({ href, big, small }: { href: string; big: React.ReactNode; small: React.ReactNode }) {
+/** Petite tuile colorée vers un espace : emoji, nom et un chiffre ou un mot. */
+function Tile({ href, value, hint }: { href: string; value: React.ReactNode; hint?: string }) {
   const s = space(href)!;
   return (
-    <Link href={href} className="flex min-w-0 flex-col gap-1 rounded-3xl p-4 transition hover:brightness-[0.98] active:scale-[0.97]"
-      style={{ background: s.soft }}>
-      <span className="flex items-center justify-between">
-        <span className="text-2xl">{s.emoji}</span>
-        <span className="text-sm font-bold" style={{ color: s.strong }}>{s.label}</span>
-      </span>
-      <span className="mt-1 truncate text-2xl font-extrabold" style={{ color: s.strong }}>{big}</span>
-      <span className="truncate text-xs font-semibold opacity-75" style={{ color: s.strong }}>{small}</span>
+    <Link href={href} title={hint} className="flex min-w-0 items-center gap-2 rounded-2xl px-3 py-2.5 transition hover:brightness-[0.98] active:scale-[0.97]"
+      style={{ background: s.soft, color: s.strong }}>
+      <span className="text-lg">{s.emoji}</span>
+      <span className="shrink-0 text-sm font-bold">{s.label}</span>
+      <span className="min-w-0 flex-1 truncate text-right text-sm font-extrabold">{value}</span>
     </Link>
   );
 }
@@ -48,10 +44,7 @@ export default function AccueilPage() {
   const { events } = useEvents();
   const { items: todos } = useCollection<Todo>("todos");
   const { items: shopping } = useCollection<ShoppingItem>("shopping");
-  const { items: meals } = useCollection<MealSlot>("meals");
-  const { items: recipes } = useCollection<Recipe>("recipes");
   const { items: trips } = useCollection<Trip>("trips");
-  const { items: contacts } = useContacts();
   const { items: outings } = useCollection<Outing>("outings");
 
   if (!family) return null;
@@ -73,20 +66,6 @@ export default function AccueilPage() {
     (acc[o.date] ??= []).push(o);
     return acc;
   }, {});
-
-  // La famille et les anniversaires notés dans les contacts (grands-parents, cousines…).
-  const birthdays = [
-    ...family.members.map((m) => ({ key: m.id, name: m.name, color: m.color, ageNow: ageLabel(m.birthDate), ...nextBirthday(m.birthDate) })),
-    ...contacts.filter((c) => c.birthday).map((c) => ({
-      key: c.id, name: c.name, color: member(c.memberIds[0])?.color,
-      ageNow: c.birthYear ? ageLabel(contactBirthDate(c)) : undefined, ...nextBirthday(contactBirthDate(c)),
-    })),
-  ].sort((a, b) => a.days - b.days).slice(0, 6);
-
-  const mealToday = (slot: string) => {
-    const s = meals.find((x) => x.id === `${now}_${slot}`);
-    return recipes.find((r) => r.id === s?.recipeId)?.name ?? s?.text;
-  };
 
   const openTodos = todos
     .filter((t) => !t.done)
@@ -132,18 +111,14 @@ export default function AccueilPage() {
             ))}
           </ul>
         )}
-        <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-          <span className="truncate rounded-2xl bg-white/15 px-3 py-2"><span className="text-white/70">🍝 Midi · </span>{mealToday("midi") ?? "à définir"}</span>
-          <span className="truncate rounded-2xl bg-white/15 px-3 py-2"><span className="text-white/70">🌙 Soir · </span>{mealToday("soir") ?? "à définir"}</span>
-        </div>
       </Link>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Tile href="/courses" big={toBuy.length || "✓"} small={toBuy.slice(0, 3).map((s) => s.name).join(", ") || "Liste vide"} />
-        <Tile href="/todo" big={openTodos.length || "✓"} small={urgent.length ? `${urgent.length} pour aujourd'hui` : openTodos.length ? "à faire" : "Rien en attente"} />
-        <Tile href="/sorties" big={ideas.length} small={ideas.length ? `idée${ideas.length > 1 ? "s" : ""} de sortie` : "Ajoutez une idée"} />
-        <Tile href="/voyages" big={nextTrip ? nextTrip.name : "—"}
-          small={nextTrip ? (nextTrip.startDate <= now ? "en cours" : `départ ${relativeDay(nextTrip.startDate).toLowerCase()}`) : "Aucun voyage prévu"} />
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <Tile href="/courses" value={toBuy.length || "✓"} hint={toBuy.slice(0, 5).map((s) => s.name).join(", ")} />
+        <Tile href="/todo" value={openTodos.length || "✓"} />
+        <Tile href="/sorties" value={ideas.length} />
+        <Tile href="/voyages" value={nextTrip ? nextTrip.name : "—"}
+          hint={nextTrip && (nextTrip.startDate <= now ? "En cours" : `Départ ${relativeDay(nextTrip.startDate).toLowerCase()}`)} />
       </div>
 
       <Section title="À venir" href="/agenda">
@@ -212,22 +187,6 @@ export default function AccueilPage() {
         </Section>
       )}
 
-      <Section title="🎂 Anniversaires" href="/contacts?anniv=1" linkLabel="+ Ajouter">
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-          {birthdays.map(({ key, name, color, ageNow, date, days }) => (
-            <div key={key} className={`flex min-w-[7.5rem] shrink-0 flex-col items-center gap-1 rounded-2xl p-3 text-center ${date === now ? "bg-teal-100" : "bg-stone-100/70"}`}>
-              <span className="flex h-10 w-10 items-center justify-center rounded-full text-lg font-extrabold text-white" style={{ background: color ?? "#a8a29e" }}>
-                {name.slice(0, 1)}
-              </span>
-              <b className="text-sm leading-tight">{name}</b>
-              <span className="text-xs text-stone-500">
-                {date === now ? "aujourd'hui 🎉" : days <= 31 ? `dans ${days} j` : fmtLong(date).replace(/^\S+ /, "")}
-              </span>
-              {ageNow && <span className="text-[11px] text-stone-400">{ageNow}</span>}
-            </div>
-          ))}
-        </div>
-      </Section>
     </div>
   );
 }

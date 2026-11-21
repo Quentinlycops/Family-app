@@ -50,7 +50,7 @@ export default function ContactsPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader subtitle="Pédiatre, crèche, famille et anniversaires">
+      <PageHeader subtitle="Pédiatre, crèche, famille">
         <button className="btn-ghost text-sm" onClick={() => setEditing({ birthdayFirst: true })}>🎂 + Anniv.</button>
         <button className="btn" onClick={() => setEditing({ memberIds: filter && filter !== "anniv" ? [filter] : [] })}>+ Contact</button>
       </PageHeader>
